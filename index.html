@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>알치냐 마라카낭 스타디움 (Altinha Maracanã Stadium) - 원본 화면 맞춤</title>
+  <title>Altinha_Rio_Beach (알치냐 리우 비치) - 이파네마 선셋</title>
   <!-- Tailwind CSS & FontAwesome -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -84,7 +84,7 @@
     <div class="flex flex-col gap-2 pointer-events-auto">
       <div class="flex items-center gap-2">
         <span id="hudModeBadge" class="px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-emerald-500/90 text-slate-950 shadow-md">
-          <i class="fa-solid fa-users mr-1"></i> AI 랠리
+          <i class="fa-solid fa-umbrella-beach mr-1"></i> AI 비치 랠리
         </span>
         <div id="roomCodeBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-black bg-blue-500/90 text-white shadow tracking-widest">
           CODE: <span id="hudRoomCodeText" class="font-mono text-yellow-300 font-extrabold">----</span>
@@ -194,13 +194,13 @@
 
       <!-- Title Badge -->
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-400/20 border border-yellow-400/40 text-yellow-300 text-xs font-extrabold uppercase tracking-wider mb-3">
-        <i class="fa-solid fa-futbol"></i> Estádio do Maracanã Altinha
+        <i class="fa-solid fa-umbrella-beach"></i> Rio Ipanema Beach - Altinha_Rio_Beach
       </div>
       <h1 class="font-game text-4xl sm:text-5xl font-black tracking-tight text-white mb-2">
-        알치냐 <span class="text-yellow-400 text-glow-yellow">스타디움</span> 아레나
+        알치냐 <span class="text-yellow-400 text-glow-yellow">리우 비치</span> (Altinha_Rio_Beach)
       </h1>
       <p class="text-slate-300 text-xs sm:text-sm max-w-md mx-auto mb-6 leading-relaxed">
-        브라질 축구의 성지 마라카낭 스타디움 그라운드에서 펼치는 원바운드 볼 랠리! 화려한 발놀림과 역동적인 모션으로 관중을 열광시켜 보세요.
+        브라질 리우 이파네마 해변의 환상적인 일몰 아래에서 펼치는 원바운드 볼 랠리! 도이스 이르망스 산과 대서양 바다를 배경으로 경쾌한 삼바 축구를 즐겨보세요.
       </p>
 
       <!-- 3 Play Modes Selection -->
@@ -1091,187 +1091,285 @@
   }
 
   /* =========================================================
-     8. GRAPHICS RENDERING (MARACANÃ FOOTBALL STADIUM)
+     8. GRAPHICS RENDERING (RIO DE JANEIRO IPANEMA BEACH - Altinha_Rio_Beach)
      ========================================================= */
   function drawBrazilianBeachBackground() {
-    stadiumTick += 0.05;
+    stadiumTick += 0.035;
 
     // Clear canvas cleanly to prevent ghosting or graphic artifact glitches
     ctx.clearRect(0, 0, width, height);
 
-    // 1) Night Stadium Sky & Lighting
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.45);
-    skyGrad.addColorStop(0, '#060d1a');
-    skyGrad.addColorStop(0.6, '#0c1b33');
-    skyGrad.addColorStop(1, '#1e293b');
+    // 1) Warm Sunset Sky (b.jpg dusk gradient)
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, pitchHorizon);
+    skyGrad.addColorStop(0.0, '#ea580c'); // Deep dusk orange
+    skyGrad.addColorStop(0.35, '#f59e0b'); // Warm sunset gold
+    skyGrad.addColorStop(0.70, '#fde047'); // Glowing yellow horizon
+    skyGrad.addColorStop(1.0, '#fed7aa');  // Horizon mist glow
     ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, width, height * 0.45);
+    ctx.fillRect(0, 0, width, pitchHorizon);
 
-    // 2) Huge Maracanã Stadium Grandstands & Cheering Crowd
-    const standTop = height * 0.09;
-    // pitchHorizon is computed dynamically in calculateScreenFitLayout()
+    // 2) Golden Sunset Sun & Radiant Ambient Glow (from b.jpg)
+    const sunX = width * 0.68;
+    const sunY = pitchHorizon * 0.32;
+    const sunR = Math.max(24, pitchHorizon * 0.20);
 
-    // Lower/Upper tiered stand concrete arches
-    ctx.fillStyle = '#1e293b';
+    // Wide atmospheric sunset halo
+    const sunHalo = ctx.createRadialGradient(sunX, sunY, sunR * 0.3, sunX, sunY, sunR * 4.2);
+    sunHalo.addColorStop(0, 'rgba(254, 240, 138, 0.75)');
+    sunHalo.addColorStop(0.35, 'rgba(251, 191, 36, 0.32)');
+    sunHalo.addColorStop(0.7, 'rgba(249, 115, 22, 0.15)');
+    sunHalo.addColorStop(1, 'rgba(249, 115, 22, 0)');
+    ctx.fillStyle = sunHalo;
     ctx.beginPath();
-    ctx.ellipse(centerX, pitchHorizon + 10, width * 0.85, (pitchHorizon - standTop) * 1.3, 0, Math.PI, 0, true);
+    ctx.arc(sunX, sunY, sunR * 4.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Crowds (Animated colored spectators & waving Brazilian colors)
-    const crowdRows = 8;
-    for (let r = 0; r < crowdRows; r++) {
-      const rowY = standTop + (r / crowdRows) * (pitchHorizon - standTop);
-      const yFrac = r / crowdRows;
-      const rowWidth = width * (0.6 + yFrac * 0.45);
-      const startX = centerX - rowWidth / 2;
-      const count = Math.floor(rowWidth / 14);
+    // Brilliant golden sun sphere
+    const sunCore = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR);
+    sunCore.addColorStop(0, '#ffffff');
+    sunCore.addColorStop(0.65, '#fffbeb');
+    sunCore.addColorStop(1, '#fde047');
+    ctx.fillStyle = sunCore;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+    ctx.fill();
 
-      for (let c = 0; c < count; c++) {
-        const cx = startX + c * 14 + (r % 2) * 7;
-        const jumpOffset = Math.sin(stadiumTick * 2.5 + c * 0.35 + r) * 2;
-        const colorSeed = (c * 7 + r * 13) % 4;
-        let fanColor = '#eab308'; // Brazil Yellow
-        if (colorSeed === 1) fanColor = '#16a34a'; // Green
-        else if (colorSeed === 2) fanColor = '#38bdf8'; // Blue
-        else if (colorSeed === 3) fanColor = '#ffffff';
+    // 3) Distant Atlantic Ocean & Sea Horizon (Left side, from b.jpg)
+    const seaTopY = pitchHorizon * 0.62;
+    const seaGrad = ctx.createLinearGradient(0, seaTopY, 0, pitchHorizon);
+    seaGrad.addColorStop(0, '#1e3a8a'); // Deep Atlantic twilight blue
+    seaGrad.addColorStop(0.6, '#1d4ed8');
+    seaGrad.addColorStop(1, '#2563eb');
+    ctx.fillStyle = seaGrad;
+    ctx.fillRect(0, seaTopY, width * 0.65, pitchHorizon - seaTopY);
 
-        ctx.fillStyle = fanColor;
-        ctx.beginPath();
-        ctx.arc(cx, rowY + jumpOffset, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    // Golden specular sunlight reflection shimmer on ocean (b.jpg trail)
+    const glintGrad = ctx.createLinearGradient(sunX * 0.72, seaTopY, sunX * 0.45, pitchHorizon);
+    glintGrad.addColorStop(0, 'rgba(254, 240, 138, 0.70)');
+    glintGrad.addColorStop(0.5, 'rgba(253, 224, 71, 0.40)');
+    glintGrad.addColorStop(1, 'rgba(254, 240, 138, 0.12)');
+    ctx.fillStyle = glintGrad;
+    ctx.beginPath();
+    ctx.moveTo(sunX * 0.74, seaTopY);
+    ctx.lineTo(sunX * 0.82, seaTopY);
+    ctx.lineTo(sunX * 0.58, pitchHorizon);
+    ctx.lineTo(sunX * 0.38, pitchHorizon);
+    ctx.closePath();
+    ctx.fill();
+
+    // Subtle distant water ripples (far away, not in the play area)
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.3)';
+    ctx.lineWidth = 1.2;
+    for (let r = 0; r < 4; r++) {
+      const ry = seaTopY + (pitchHorizon - seaTopY) * (0.25 + r * 0.22);
+      const rxOffset = Math.sin(stadiumTick * 1.5 + r) * 6;
+      ctx.beginPath();
+      ctx.moveTo(sunX * 0.45 + rxOffset, ry);
+      ctx.lineTo(sunX * 0.65 + rxOffset, ry);
+      ctx.stroke();
     }
 
-    // 3) Giant Jumbotron / Scoreboard in Center of Stadium
-    const jumbotronW = Math.min(260, width * 0.45);
-    const jumbotronH = 50;
-    const jumbotronX = centerX - jumbotronW / 2;
-    const jumbotronY = height * 0.05;
+    // 4) Iconic Morro Dois Irmãos (Two Brothers Mountain silhouette from b.jpg)
+    const mBaseY = pitchHorizon + 2;
+    const mStartX = width * 0.42;
 
-    ctx.fillStyle = '#0f172a';
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 3;
+    ctx.fillStyle = '#1e293b'; // Slate dark mountain body silhouette
     ctx.beginPath();
-    ctx.roundRect(jumbotronX, jumbotronY, jumbotronW, jumbotronH, 8);
+    ctx.moveTo(mStartX, mBaseY);
+
+    // Brother 1 (Main taller peak)
+    const p1X = width * 0.72;
+    const p1Y = pitchHorizon * 0.18;
+    ctx.bezierCurveTo(width * 0.52, pitchHorizon * 0.62, width * 0.64, p1Y + 35, p1X, p1Y);
+
+    // Mountain saddle between twin peaks
+    const saddleX = width * 0.785;
+    const saddleY = pitchHorizon * 0.42;
+    ctx.bezierCurveTo(width * 0.755, p1Y + 12, width * 0.765, saddleY, saddleX, saddleY);
+
+    // Brother 2 (Smaller sharp peak)
+    const p2X = width * 0.84;
+    const p2Y = pitchHorizon * 0.28;
+    ctx.bezierCurveTo(width * 0.81, saddleY - 8, width * 0.82, p2Y + 8, p2X, p2Y);
+
+    // Ridge sloping down to the right
+    ctx.bezierCurveTo(width * 0.89, p2Y + 45, width * 0.94, pitchHorizon * 0.75, width + 30, mBaseY);
+    ctx.lineTo(mStartX, mBaseY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Warm golden rim highlight on the sunlit left ridge of the mountain
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.5)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(width * 0.54, pitchHorizon * 0.60);
+    ctx.bezierCurveTo(width * 0.64, p1Y + 35, width * 0.68, p1Y + 10, p1X, p1Y);
+    ctx.stroke();
+
+    // 5) Shoreline White Surf Foam (Far away where ocean waves meet the sand)
+    const waveOffset = Math.sin(stadiumTick * 1.8) * 3;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.82)';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(0, pitchHorizon - 4 + waveOffset * 0.5);
+    ctx.bezierCurveTo(
+      width * 0.20, pitchHorizon - 3 - waveOffset * 0.3,
+      width * 0.38, pitchHorizon + 5 + waveOffset * 0.4,
+      width * 0.50, pitchHorizon + 3
+    );
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(0, pitchHorizon - 2 + waveOffset * 0.5);
+    ctx.bezierCurveTo(
+      width * 0.20, pitchHorizon - 1 - waveOffset * 0.3,
+      width * 0.38, pitchHorizon + 7 + waveOffset * 0.4,
+      width * 0.50, pitchHorizon + 5
+    );
+    ctx.stroke();
+
+    // 6) Wide Golden Sand Beach (Ipanema Beach ground replacing stadium grass)
+    const sandGrad = ctx.createLinearGradient(0, pitchHorizon, 0, height);
+    sandGrad.addColorStop(0.0, '#eab308'); // Warm golden amber
+    sandGrad.addColorStop(0.35, '#f59e0b'); // Vibrant Rio beach sand
+    sandGrad.addColorStop(0.85, '#d97706'); // Deep golden amber
+    sandGrad.addColorStop(1.0, '#b45309');
+    ctx.fillStyle = sandGrad;
+    ctx.fillRect(0, pitchHorizon, width, height - pitchHorizon);
+
+    // Left wet sand gloss sheen near the ocean surf
+    const wetGrad = ctx.createLinearGradient(0, 0, width * 0.45, 0);
+    wetGrad.addColorStop(0, 'rgba(30, 64, 175, 0.18)');
+    wetGrad.addColorStop(0.6, 'rgba(254, 240, 138, 0.10)');
+    wetGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+    ctx.fillStyle = wetGrad;
+    ctx.fillRect(0, pitchHorizon, width * 0.48, height - pitchHorizon);
+
+    // 7) Elegant Beach Title Signboard (Replacing stadium jumbotron)
+    const boardW = Math.min(270, width * 0.46);
+    const boardH = 50;
+    const boardX = centerX - boardW / 2;
+    const boardY = Math.max(14, height * 0.04);
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.roundRect(boardX, boardY, boardW, boardH, 12);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#0284c7';
-    ctx.fillRect(jumbotronX + 4, jumbotronY + 4, jumbotronW - 8, jumbotronH - 8);
+    ctx.fillRect(boardX + 4, boardY + 4, boardW - 8, boardH - 8);
 
     ctx.font = '900 12px Fredoka, sans-serif';
     ctx.fillStyle = '#fde047';
     ctx.textAlign = 'center';
-    ctx.fillText('ESTÁDIO DO MARACANÃ', centerX, jumbotronY + 18);
+    ctx.fillText('PRAIA DE IPANEMA ★ RIO DE JANEIRO', centerX, boardY + 18);
     ctx.font = '700 11px Inter, sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`RALLY: ${rally}  |  SCORE: ${score}`, centerX, jumbotronY + 36);
+    ctx.fillText(`ALTINHA RIO BEACH  |  RALLY: ${rally}  |  SCORE: ${score}`, centerX, boardY + 36);
 
-    // 4) Digital LED Advertising Boards along Pitch Perimeter
-    const ledY = pitchHorizon - 10;
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(0, ledY, width, 18);
+    // 8) Colorful Beach Umbrellas dotted on sand (distinctive feature from b.jpg)
+    drawBeachUmbrellas();
 
-    ctx.font = 'bold 9px Inter';
-    ctx.fillStyle = '#38bdf8';
-    const ledCycle = (Date.now() / 35) % 300;
-    for (let lx = -ledCycle; lx < width + 200; lx += 220) {
-      ctx.fillText('⚡ VIVA O FUTEBOL BRASIL ★ ALTINHA CUP 2026', lx, ledY + 12);
-    }
+    // 9) Distant gliding seagulls in the sunset sky
+    seagulls.forEach(s => {
+      s.x += s.speed;
+      if (s.x > width + 40) s.x = -40;
+      s.wingPhase += 0.08;
+      const wingY = Math.sin(s.wingPhase) * 3;
 
-    // 5) Lush Green Stadium Pitch (Mower-Striped Lawn Pattern)
-    const grassGrad = ctx.createLinearGradient(0, pitchHorizon, 0, height);
-    grassGrad.addColorStop(0, '#15803d');
-    grassGrad.addColorStop(0.5, '#16a34a');
-    grassGrad.addColorStop(1, '#14532d');
-    ctx.fillStyle = grassGrad;
-    ctx.fillRect(0, pitchHorizon, width, height - pitchHorizon);
+      ctx.strokeStyle = 'rgba(30, 41, 59, 0.65)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(s.x - 7, s.y + wingY);
+      ctx.quadraticCurveTo(s.x - 3, s.y - 3, s.x, s.y);
+      ctx.quadraticCurveTo(s.x + 3, s.y - 3, s.x + 7, s.y + wingY);
+      ctx.stroke();
+    });
 
-    // Alternating light/dark green mower stripes
-    const stripeCount = 14;
-    for (let s = 0; s < stripeCount; s++) {
-      const stripeY = pitchHorizon + (s / stripeCount) * (height - pitchHorizon);
-      const stripeH = (height - pitchHorizon) / stripeCount;
-      if (s % 2 === 0) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-        ctx.fillRect(0, stripeY, width, stripeH);
-      }
-    }
-
-    // 6) Official White Pitch Field Markings (2.5D Perspective - Aligned with 4 players)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-    ctx.lineWidth = 3.5;
-
-    // Center Circle & Center Spot (Perfect screen-fit around 4 players)
+    // 10) Beach Sand Rally Play Circle (NO center dividing line as requested!)
+    // Subtle sand circular markings for the 4-player altinha circle
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.ellipse(centerX, centerY, circleRadiusX * 1.15, circleRadiusY * 1.15, 0, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    // Subtle center marker
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.beginPath();
-    ctx.arc(centerX, centerY, 4.5, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Halfway Line
-    ctx.beginPath();
-    ctx.moveTo(centerX - circleRadiusX * 1.8, centerY);
-    ctx.lineTo(centerX + circleRadiusX * 1.8, centerY);
-    ctx.stroke();
-
-    // Passing Orbit Guide Ellipse (as seen in a.png)
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-    ctx.lineWidth = 1.5;
+    // Passing Orbit Guide Ellipse (Cyan glow as seen in a.png)
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.50)';
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.ellipse(centerX, centerY, circleRadiusX * 1.03, circleRadiusY * 1.03, 0, 0, Math.PI * 2);
     ctx.stroke();
-
-    // 7) Stadium Floodlight Towers with Volumetric Cones
-    drawStadiumFloodlight(Math.max(30, width * 0.065), height * 0.14, 1);
-    drawStadiumFloodlight(Math.min(width - 30, width * 0.935), height * 0.14, -1);
   }
 
-  function drawStadiumFloodlight(x, y, dir = 1) {
-    ctx.save();
-    ctx.translate(x, y);
+  function drawBeachUmbrellas() {
+    const umbrellaColors = ['#ef4444', '#38bdf8', '#facc15', '#22c55e', '#a855f7', '#f97316'];
+    const umbrellaSpots = [
+      { rx: 0.78, ry: 0.44, col: 0, s: 1.0 },
+      { rx: 0.85, ry: 0.40, col: 1, s: 0.9 },
+      { rx: 0.92, ry: 0.45, col: 2, s: 0.95 },
+      { rx: 0.80, ry: 0.52, col: 3, s: 1.05 },
+      { rx: 0.88, ry: 0.56, col: 4, s: 1.1 },
+      { rx: 0.94, ry: 0.60, col: 5, s: 1.15 },
+      { rx: 0.84, ry: 0.68, col: 0, s: 1.15 },
+      { rx: 0.91, ry: 0.74, col: 1, s: 1.2 },
+      { rx: 0.08, ry: 0.46, col: 2, s: 0.9 },
+      { rx: 0.05, ry: 0.58, col: 3, s: 1.05 }
+    ];
 
-    // Light Tower Lattice Pole
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(-dir * 25, 160);
-    ctx.moveTo(0, 0);
-    ctx.lineTo(dir * 10, 160);
-    ctx.stroke();
+    umbrellaSpots.forEach(u => {
+      const ux = width * u.rx;
+      const uy = height * u.ry;
+      const scale = u.s;
 
-    // Floodlight Lamp Head Bank (4x2 Matrix of glowing lamps)
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(-22, -18, 44, 26);
+      ctx.save();
+      ctx.translate(ux, uy);
 
-    for (let r = 0; r < 2; r++) {
-      for (let c = 0; c < 4; c++) {
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(-15 + c * 10, -11 + r * 13, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
+      // Soft Ground Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.20)';
+      ctx.beginPath();
+      ctx.ellipse(scale * 10, scale * 18, scale * 14, scale * 5, 0.2, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Volumetric Light Cone projecting onto pitch
-    const coneGrad = ctx.createRadialGradient(0, 0, 20, dir * 180, 260, 360);
-    coneGrad.addColorStop(0, 'rgba(254, 240, 138, 0.35)');
-    coneGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
-    coneGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      // Wooden Pole
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2 * scale;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(scale * 6, scale * 18);
+      ctx.stroke();
 
-    ctx.fillStyle = coneGrad;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(dir * 380, 320);
-    ctx.lineTo(dir * 120, 360);
-    ctx.closePath();
-    ctx.fill();
+      // Colorful Canopy Cone
+      ctx.fillStyle = umbrellaColors[u.col];
+      ctx.beginPath();
+      ctx.moveTo(0, -scale * 14);
+      ctx.lineTo(-scale * 18, scale * 4);
+      ctx.quadraticCurveTo(0, scale * 9, scale * 18, scale * 4);
+      ctx.closePath();
+      ctx.fill();
 
-    ctx.restore();
+      // Canopy highlight strip
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.beginPath();
+      ctx.moveTo(0, -scale * 14);
+      ctx.lineTo(-scale * 6, scale * 6);
+      ctx.lineTo(scale * 6, scale * 6);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+    });
   }
 
   /* =========================================================
@@ -1996,7 +2094,7 @@
         modeBadge.className = 'px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-emerald-500/90 text-slate-950 shadow-md';
         roomBadge.classList.add('hidden');
       } else if (mode === 'AI') {
-        modeBadge.innerHTML = '<i class="fa-solid fa-users mr-1"></i> AI 랠리';
+        modeBadge.innerHTML = '<i class="fa-solid fa-umbrella-beach mr-1"></i> AI 비치 랠리';
         modeBadge.className = 'px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-yellow-400/90 text-slate-950 shadow-md';
         roomBadge.classList.add('hidden');
       } else if (mode === 'MULTI') {
