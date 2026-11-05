@@ -711,6 +711,7 @@
     let pitchHorizon = height * 0.38;
     let circleRadiusX = 175;
     let circleRadiusY = 110;
+    let isMobileControlsVisible = false;
 
     function calculateScreenFitLayout() {
       // 1) Pitch Horizon: Sea and sky in upper ~35%, golden sand in lower ~65%
@@ -1088,7 +1089,6 @@
     /* =========================================================
        6-B. ADVANCED MOBILE TOUCH ENGINE (POINTER EVENTS API)
        ========================================================= */
-    let isMobileControlsVisible = false;
     let joystickActive = false;
     let joystickPointerId = null;
     let joystickCenter = { x: 0, y: 0 };
