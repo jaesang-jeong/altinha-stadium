@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>알치냐 마라카낭 스타디움 (Altinha Maracanã Stadium) - 원본 화면 맞춤</title>
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Inter & Fredoka Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+  <!-- PeerJS for WebRTC Room-Code Multiplayer -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      overflow: hidden;
+      background-color: #0b1325;
+    }
+    .font-game {
+      font-family: 'Fredoka', cursive, sans-serif;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      image-rendering: auto;
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+    }
+    .text-glow-yellow {
+      text-shadow: 0 0 16px rgba(250, 204, 21, 0.75);
+    }
+    .text-glow-emerald {
+      text-shadow: 0 0 16px rgba(52, 211, 153, 0.75);
+    }
+    /* Keycap styling */
+    .keycap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+      border: 1px solid #64748b;
+      border-bottom: 3px solid #0f172a;
+      border-radius: 6px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #f8fafc;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden text-white select-none">
+
+  <!-- Background / Game Canvas -->
+  <canvas id="gameCanvas" class="absolute inset-0 z-0"></canvas>
+
+  <!-- Top In-Game HUD -->
+  <div id="gameHud" class="absolute top-0 left-0 right-0 p-3 sm:p-5 flex justify-between items-start pointer-events-none z-20 transition-opacity duration-300 opacity-0">
+    <!-- Left Section: Mode Badge, Lives & Bounce Indicator -->
+    <div class="flex flex-col gap-2 pointer-events-auto">
+      <div class="flex items-center gap-2">
+        <span id="hudModeBadge" class="px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-emerald-500/90 text-slate-950 shadow-md">
+          <i class="fa-solid fa-users mr-1"></i> AI 랠리
+        </span>
+        <div id="roomCodeBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-black bg-blue-500/90 text-white shadow tracking-widest">
+          CODE: <span id="hudRoomCodeText" class="font-mono text-yellow-300 font-extrabold">----</span>
+        </div>
+      </div>
+
+      <!-- Lives & One-bound status -->
+      <div class="flex items-center gap-2">
+        <div class="glass-card px-3 py-1.5 rounded-2xl flex items-center gap-1.5">
+          <span class="text-[10px] font-bold text-slate-300 uppercase mr-1">LIFE</span>
+          <div id="livesContainer" class="flex items-center gap-1">
+            <i class="fa-solid fa-heart text-rose-500 text-sm"></i>
+            <i class="fa-solid fa-heart text-rose-500 text-sm"></i>
+            <i class="fa-solid fa-heart text-rose-500 text-sm"></i>
+          </div>
+        </div>
+
+        <!-- Bounce indicator -->
+        <div id="bounceIndicator" class="glass-card px-3 py-1.5 rounded-2xl flex items-center gap-1.5 border-emerald-400/40">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="bounceText" class="text-xs font-black text-emerald-300 tracking-wide">0 바운드 (공중)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Section: Rallies & Combo Display -->
+    <div class="flex flex-col items-center pointer-events-none">
+      <div class="flex items-baseline gap-2">
+        <span class="text-xs font-bold uppercase tracking-widest text-amber-300">RALLY</span>
+        <span id="rallyCountText" class="font-game text-4xl sm:text-5xl font-black text-yellow-400 text-glow-yellow">0</span>
+      </div>
+      <div id="comboContainer" class="opacity-0 transition-opacity duration-200">
+        <span id="comboBadge" class="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-[11px] font-black tracking-wider uppercase text-slate-950 shadow">
+          <span id="comboCount">0</span>x COMBO!
+        </span>
+      </div>
+    </div>
+
+    <!-- Right Section: Score, Speed Toggle & Action Buttons -->
+    <div class="flex flex-col items-end gap-2 pointer-events-auto">
+      <div class="flex items-center gap-2">
+        <!-- Score -->
+        <div class="glass-card px-3.5 py-1.5 rounded-2xl text-right">
+          <div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">SCORE</div>
+          <div id="scoreText" class="text-xl sm:text-2xl font-black text-yellow-300 font-game">0</div>
+        </div>
+
+        <!-- Live Game Speed Toggle -->
+        <div class="glass-card p-1 rounded-2xl flex items-center gap-1">
+          <button data-speed="0.5" class="speed-btn px-2 py-1 rounded-xl text-[11px] font-black bg-yellow-400 text-slate-950 transition shadow">0.5x 초슬로우</button>
+          <button data-speed="0.8" class="speed-btn px-2 py-1 rounded-xl text-[11px] font-bold text-slate-300 hover:text-white transition">0.8x 느림</button>
+          <button data-speed="1.0" class="speed-btn px-2 py-1 rounded-xl text-[11px] font-bold text-slate-300 hover:text-white transition">1.0x</button>
+        </div>
+
+        <!-- Sound Button -->
+        <button id="soundToggleBtn" class="glass-card w-9 h-9 rounded-2xl flex items-center justify-center text-slate-200 hover:text-yellow-400 transition active:scale-95">
+          <i id="soundIcon" class="fa-solid fa-volume-high text-xs"></i>
+        </button>
+
+        <!-- Guide Button -->
+        <button id="guideBtn" class="glass-card px-3 h-9 rounded-2xl flex items-center gap-1.5 text-xs font-bold text-emerald-300 hover:text-white border-emerald-400/30 transition active:scale-95">
+          <i class="fa-solid fa-book-open text-xs"></i>
+          <span class="hidden sm:inline">도감 (H)</span>
+        </button>
+
+        <!-- Exit / Menu Button -->
+        <button id="returnMenuBtn" class="glass-card w-9 h-9 rounded-2xl flex items-center justify-center text-slate-300 hover:text-rose-400 transition active:scale-95" title="메인 메뉴">
+          <i class="fa-solid fa-house text-xs"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Touch Controls (Shown on Mobile / Tablets) -->
+  <div id="mobileControls" class="absolute bottom-4 left-4 right-4 justify-between items-end pointer-events-none z-20 hidden">
+    <!-- Virtual D-pad / Joystick Base -->
+    <div id="joystickZone" class="w-32 h-32 rounded-full glass-card relative pointer-events-auto flex items-center justify-center border border-white/20 touch-none">
+      <div id="joystickKnob" class="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 shadow-lg pointer-events-none absolute"></div>
+    </div>
+    <!-- Action Skill Buttons -->
+    <div class="grid grid-cols-2 gap-2 pointer-events-auto">
+      <button id="touchBtnZ" class="w-16 h-16 rounded-2xl glass-card flex flex-col items-center justify-center border-yellow-400/40 active:scale-90 transition">
+        <span class="text-xs font-black text-yellow-400">인사이드</span>
+        <span class="text-[9px] text-slate-300">Z / J</span>
+      </button>
+      <button id="touchBtnX" class="w-16 h-16 rounded-2xl glass-card flex flex-col items-center justify-center border-cyan-400/40 active:scale-90 transition">
+        <span class="text-xs font-black text-cyan-300">바이시클</span>
+        <span class="text-[9px] text-slate-300">X / K</span>
+      </button>
+      <button id="touchBtnC" class="w-16 h-16 rounded-2xl glass-card flex flex-col items-center justify-center border-purple-400/40 active:scale-90 transition">
+        <span class="text-xs font-black text-purple-300">라보나</span>
+        <span class="text-[9px] text-slate-300">C / L</span>
+      </button>
+      <button id="touchBtnSpace" class="w-16 h-16 rounded-2xl glass-card flex flex-col items-center justify-center border-rose-400/40 active:scale-90 transition bg-rose-500/20">
+        <span class="text-xs font-black text-rose-300">다이빙</span>
+        <span class="text-[9px] text-slate-300">SPACE</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN MENU MODAL (Select Mode) -->
+  <div id="mainMenuModal" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+    <div class="glass-card max-w-xl w-full p-6 sm:p-8 rounded-3xl text-center border border-white/20 relative overflow-hidden">
+      <!-- Tropical Decorative Highlights -->
+      <div class="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-yellow-500/20 blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-16 -left-16 w-44 h-44 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none"></div>
+
+      <!-- Title Badge -->
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-400/20 border border-yellow-400/40 text-yellow-300 text-xs font-extrabold uppercase tracking-wider mb-3">
+        <i class="fa-solid fa-futbol"></i> Estádio do Maracanã Altinha
+      </div>
+      <h1 class="font-game text-4xl sm:text-5xl font-black tracking-tight text-white mb-2">
+        알치냐 <span class="text-yellow-400 text-glow-yellow">스타디움</span> 아레나
+      </h1>
+      <p class="text-slate-300 text-xs sm:text-sm max-w-md mx-auto mb-6 leading-relaxed">
+        브라질 축구의 성지 마라카낭 스타디움 그라운드에서 펼치는 원바운드 볼 랠리! 화려한 발놀림과 역동적인 모션으로 관중을 열광시켜 보세요.
+      </p>
+
+      <!-- 3 Play Modes Selection -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 text-left">
+        <!-- Mode 1: Solo -->
+        <button id="selectSoloModeBtn" class="group p-4 rounded-2xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-400/60 transition-all flex flex-col justify-between text-left active:scale-95">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400 mb-3 group-hover:scale-110 transition">
+              <i class="fa-solid fa-person-running text-lg"></i>
+            </div>
+            <div class="font-black text-sm text-white mb-1">혼자 연습하기</div>
+            <p class="text-[11px] text-slate-400 leading-normal">공을 높이 차올리고 혼자서 이동하며 원바운드 타이밍과 기술을 자유롭게 연습합니다.</p>
+          </div>
+          <span class="mt-3 text-[10px] font-bold text-emerald-400 flex items-center gap-1">연습 시작 <i class="fa-solid fa-arrow-right text-[8px]"></i></span>
+        </button>
+
+        <!-- Mode 2: AI Coop -->
+        <button id="selectAiModeBtn" class="group p-4 rounded-2xl bg-white/5 hover:bg-yellow-500/20 border border-white/10 hover:border-yellow-400/60 transition-all flex flex-col justify-between text-left active:scale-95">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-yellow-500/20 border border-yellow-400/30 flex items-center justify-center text-yellow-400 mb-3 group-hover:scale-110 transition">
+              <i class="fa-solid fa-users text-lg"></i>
+            </div>
+            <div class="font-black text-sm text-white mb-1">AI 랠리 모드</div>
+            <p class="text-[11px] text-slate-400 leading-normal">3명의 브라질 비치 동료 AI들과 함께 원을 지어 서로 공을 주고받으며 최고 랠리를 달성합니다.</p>
+          </div>
+          <span class="mt-3 text-[10px] font-bold text-yellow-400 flex items-center gap-1">추천 모드 <i class="fa-solid fa-arrow-right text-[8px]"></i></span>
+        </button>
+
+        <!-- Mode 3: Room Code Multiplayer -->
+        <button id="selectMultiModeBtn" class="group p-4 rounded-2xl bg-white/5 hover:bg-sky-500/20 border border-white/10 hover:border-sky-400/60 transition-all flex flex-col justify-between text-left active:scale-95">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-400 mb-3 group-hover:scale-110 transition">
+              <i class="fa-solid fa-network-wired text-lg"></i>
+            </div>
+            <div class="font-black text-sm text-white mb-1">친구와 멀티플레이</div>
+            <p class="text-[11px] text-slate-400 leading-normal">4자리 방 코드를 생성하여 친구를 초대하거나, 친구의 방 코드에 참여해 실시간 협동 랠리를 펼칩니다.</p>
+          </div>
+          <span class="mt-3 text-[10px] font-bold text-sky-400 flex items-center gap-1">코드 방 참여 <i class="fa-solid fa-arrow-right text-[8px]"></i></span>
+        </button>
+      </div>
+
+      <!-- Quick Control Summary -->
+      <div class="bg-black/30 rounded-2xl p-3 border border-white/10 flex flex-wrap items-center justify-around gap-2 text-xs text-slate-300">
+        <div class="flex items-center gap-1.5"><span class="keycap">방향키 / WASD</span> 이동</div>
+        <div class="flex items-center gap-1.5"><span class="keycap">Z</span> 기본기</div>
+        <div class="flex items-center gap-1.5"><span class="keycap">X</span> 바이시클</div>
+        <div class="flex items-center gap-1.5"><span class="keycap">C</span> 라보나</div>
+        <div class="flex items-center gap-1.5"><span class="keycap">Space</span> 다이빙</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MULTIPLAYER ROOM MODAL (Host / Join) -->
+  <div id="multiLobbyModal" class="absolute inset-0 z-30 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+    <div class="glass-card max-w-md w-full p-6 sm:p-7 rounded-3xl border border-sky-400/30 text-center relative">
+      <button id="closeMultiModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="w-12 h-12 rounded-2xl bg-sky-500/20 border border-sky-400/40 text-sky-400 flex items-center justify-center mx-auto mb-3">
+        <i class="fa-solid fa-earth-americas text-xl"></i>
+      </div>
+      <h2 class="text-2xl font-black text-white mb-1">친구와 함께 알치냐</h2>
+      <p class="text-xs text-slate-300 mb-5">방 코드로 연결하여 실시간 코파카바나 해변 랠리를 진행하세요.</p>
+
+      <!-- Tabs: Host vs Join -->
+      <div class="grid grid-cols-2 gap-2 p-1 bg-black/40 rounded-2xl border border-white/10 mb-4">
+        <button id="tabHostBtn" class="py-2 rounded-xl text-xs font-black bg-sky-500 text-slate-950 shadow">방 만들기 (Host)</button>
+        <button id="tabJoinBtn" class="py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white">코드 입력 참여 (Join)</button>
+      </div>
+
+      <!-- Tab Content 1: Host Room -->
+      <div id="hostSection" class="space-y-4">
+        <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">내 비치 방 코드</div>
+          <div id="generatedRoomCode" class="font-mono text-3xl font-black tracking-widest text-yellow-400 text-glow-yellow py-1">----</div>
+          <div class="text-[10px] text-slate-400 mt-1">친구에게 이 4글자 코드를 알려주세요!</div>
+        </div>
+
+        <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-xs">
+          <span class="text-slate-300 font-semibold">접속된 친구:</span>
+          <span id="hostPeerCountBadge" class="font-bold text-sky-400">대기 중 (0명)</span>
+        </div>
+
+        <button id="startHostGameBtn" class="w-full py-3.5 rounded-2xl font-black text-sm bg-gradient-to-r from-emerald-400 to-teal-500 hover:brightness-110 text-slate-950 shadow-lg active:scale-95 transition">
+          <i class="fa-solid fa-play mr-1.5"></i> 해변 입장 및 랠리 시작
+        </button>
+      </div>
+
+      <!-- Tab Content 2: Join Room -->
+      <div id="joinSection" class="space-y-4 hidden">
+        <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+          <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">친구의 4자리 방 코드 입력</label>
+          <input id="joinRoomCodeInput" type="text" maxlength="4" placeholder="예: RIO7" class="w-full text-center font-mono text-2xl font-black tracking-widest uppercase bg-black/50 border border-sky-400/50 rounded-xl py-2.5 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-sky-400 placeholder-slate-600">
+        </div>
+
+        <div id="joinStatusText" class="text-xs font-bold text-slate-400">코드를 입력하고 참여하기를 누르세요.</div>
+
+        <button id="joinRoomConfirmBtn" class="w-full py-3.5 rounded-2xl font-black text-sm bg-gradient-to-r from-sky-400 to-blue-500 hover:brightness-110 text-slate-950 shadow-lg active:scale-95 transition">
+          <i class="fa-solid fa-right-to-bracket mr-1.5"></i> 방에 참여하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SKILL GUIDE & MANUAL MODAL -->
+  <div id="guideModal" class="absolute inset-0 z-30 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+    <div class="glass-card max-w-xl w-full max-h-[90vh] flex flex-col rounded-3xl border border-emerald-400/40 relative overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-5 pb-3 border-b border-white/10 flex justify-between items-center">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center">
+            <i class="fa-solid fa-book-open text-base"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-black text-white">알치냐(Altinha) 기술 도감</h2>
+            <p class="text-[11px] text-slate-400">타이밍에 맞춰 키를 누르면 화려한 스킬이 발동합니다</p>
+          </div>
+        </div>
+        <button id="closeGuideBtn" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-5 overflow-y-auto space-y-4 text-xs">
+        <!-- Rule explanation -->
+        <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-400/30 text-amber-200">
+          <div class="font-black text-sm text-yellow-300 flex items-center gap-1.5 mb-1">
+            <i class="fa-solid fa-circle-exclamation"></i> 알치냐 원바운드 규칙 (One-bound Rule)
+          </div>
+          <p class="text-[11px] leading-relaxed text-slate-300">
+            손을 제외한 발, 머리, 어깨, 무릎 등을 사용해 공을 바닥에 떨어뜨리지 않고 계속 이어가는 게임입니다. 지면에는 <strong>최대 1번 바운드</strong>까지만 허용되며, 2회 바운드되면 라이프가 차감됩니다!
+          </p>
+        </div>
+
+        <!-- Skills List -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <!-- Skill 1 -->
+          <div class="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-yellow-400/40 transition">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-extrabold text-yellow-400 text-sm">인사이드 & 클래식 헤딩</span>
+              <span class="keycap">Z</span> <span class="text-slate-400 text-[10px]">또는</span> <span class="keycap">J</span>
+            </div>
+            <p class="text-slate-300 text-[11px]">가장 안정적인 궤적으로 동료에게 부드럽게 패스를 연결합니다. 랠리를 안전하게 이어갈 때 가장 이상적입니다.</p>
+            <div class="mt-2 text-[10px] text-emerald-400 font-bold">기본 배율 1.0x / 정밀도 우선</div>
+          </div>
+
+          <!-- Skill 2 -->
+          <div class="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-400/40 transition">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-extrabold text-cyan-300 text-sm">바이시클 & 시저스 킥</span>
+              <span class="keycap">X</span> <span class="text-slate-400 text-[10px]">또는</span> <span class="keycap">K</span>
+            </div>
+            <p class="text-slate-300 text-[11px]">몸을 뒤로 젖히며 차올리는 화려한 아크로바틱 킥. 공이 높은 고도에 있을 때 발동하면 환상적인 아크를 그립니다.</p>
+            <div class="mt-2 text-[10px] text-cyan-400 font-bold">점수 배율 1.8x / 체공 높이 증가</div>
+          </div>
+
+          <!-- Skill 3 -->
+          <div class="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-400/40 transition">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-extrabold text-purple-300 text-sm">라보나 힐 & 숄더 트래핑</span>
+              <span class="keycap">C</span> <span class="text-slate-400 text-[10px]">또는</span> <span class="keycap">L</span>
+            </div>
+            <p class="text-slate-300 text-[11px]">다리를 교차시켜 뒤꿈치로 띄우거나 어깨로 통통 튀기는 브라질 특유의 삼바 감각 트릭 기술입니다.</p>
+            <div class="mt-2 text-[10px] text-purple-400 font-bold">점수 배율 1.5x / 공 스핀 회전 보너스</div>
+          </div>
+
+          <!-- Skill 4 -->
+          <div class="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-rose-400/40 transition">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-extrabold text-rose-300 text-sm">다이빙 헤더 & 발리 스파이크</span>
+              <span class="keycap">SPACE</span>
+            </div>
+            <p class="text-slate-300 text-[11px]">온몸을 던져 머리로 찍어 누르거나 강한 발리로 솟구치게 만드는 시그니처 결정기입니다.</p>
+            <div class="mt-2 text-[10px] text-rose-400 font-bold">최고 배율 2.4x / 화면 흔들림 이펙트</div>
+          </div>
+        </div>
+
+        <!-- Timing Ring guide -->
+        <div class="p-3 rounded-2xl bg-black/40 border border-white/10 text-[11px] text-slate-300">
+          <div class="font-bold text-white mb-1"><i class="fa-solid fa-bullseye text-yellow-400 mr-1"></i> 타이밍 링 판정</div>
+          공이 떨어질 때 바닥에 축소되는 링이 중심의 골든 서클과 겹치는 순간 키를 누르면 <strong>PERFECT!</strong> 판정이 발생하며 대량의 콤보 점수를 획득합니다.
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-white/10 text-center bg-black/20">
+        <button id="closeGuideBottomBtn" class="px-6 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition active:scale-95 shadow">
+          이해했습니다! 계속하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME OVER / RALLY SUMMARY MODAL -->
+  <div id="gameOverModal" class="absolute inset-0 z-30 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+    <div class="glass-card max-w-sm w-full p-6 sm:p-7 rounded-3xl border border-rose-500/40 text-center relative">
+      <div class="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-400/40 text-rose-400 flex items-center justify-center mx-auto mb-3">
+        <i class="fa-solid fa-trophy text-2xl"></i>
+      </div>
+      <h2 class="font-game text-3xl font-black text-white mb-1">랠리 종료!</h2>
+      <p id="overModeName" class="text-xs text-slate-300 mb-4">해변 랠리가 끝났습니다</p>
+
+      <div class="space-y-2.5 bg-black/40 p-4 rounded-2xl border border-white/10 mb-5">
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-slate-400">최종 랠리 수</span>
+          <span id="overRallyText" class="font-mono text-xl font-black text-yellow-400">0 회</span>
+        </div>
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-slate-400">최대 콤보</span>
+          <span id="overComboText" class="font-mono text-base font-bold text-emerald-400">0x</span>
+        </div>
+        <div class="flex justify-between items-center text-xs pt-2 border-t border-white/10">
+          <span class="text-slate-300 font-bold">최종 점수</span>
+          <span id="overScoreText" class="font-mono text-2xl font-black text-yellow-300 text-glow-yellow">0</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <button id="retryBtn" class="py-3 rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-lg active:scale-95 transition">
+          <i class="fa-solid fa-rotate-right mr-1"></i> 다시 도전
+        </button>
+        <button id="backToMenuFromOverBtn" class="py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-black text-xs border border-white/10 active:scale-95 transition">
+          <i class="fa-solid fa-house mr-1"></i> 모드 선택
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT GAME LOGIC -->
+  <script>
+    /* =========================================================
+       1. WEB AUDIO API - SAMBA SYNTHESIZER & SFX
+       ========================================================= */
+    class BrazilianSoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+        this.tempo = 96; // Relaxing beach bossa-batucada tempo
+        this.step = 0;
+        this.isPlayingBgm = false;
+        this.intervalId = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggle() {
+        this.enabled = !this.enabled;
+        const icon = document.getElementById('soundIcon');
+        if (this.enabled) {
+          icon.className = 'fa-solid fa-volume-high text-xs';
+          this.startBgm();
+        } else {
+          icon.className = 'fa-solid fa-volume-xmark text-xs text-rose-400';
+          this.stopBgm();
+        }
+        return this.enabled;
+      }
+
+      // Surdo (Deep Bass Drum)
+      playSurdo(accent = false) {
+        if (!this.enabled || !this.ctx) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(accent ? 85 : 68, t);
+        osc.frequency.exponentialRampToValueAtTime(35, t + 0.18);
+
+        gain.gain.setValueAtTime(accent ? 0.35 : 0.22, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(t);
+        osc.stop(t + 0.23);
+      }
+
+      // Pandeiro / Shaker (White Noise Click)
+      playPandeiro(accent = false) {
+        if (!this.enabled || !this.ctx) return;
+        const t = this.ctx.currentTime;
+        const bufferSize = this.ctx.sampleRate * 0.04;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = accent ? 3500 : 4800;
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(accent ? 0.12 : 0.05, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        noise.start(t);
+      }
+
+      // Agogo Bell
+      playAgogo(high = false) {
+        if (!this.enabled || !this.ctx) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(high ? 920 : 640, t);
+
+        gain.gain.setValueAtTime(0.08, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(t);
+        osc.stop(t + 0.1);
+      }
+
+      // Impact SFX for kicks
+      playKickSound(type = 'normal') {
+        if (!this.enabled || !this.ctx) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        let freqStart = 240;
+        let decay = 0.12;
+
+        if (type === 'perfect') {
+          freqStart = 420;
+          this.playAgogo(true);
+        } else if (type === 'spike') {
+          freqStart = 320;
+          decay = 0.22;
+        }
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freqStart, t);
+        osc.frequency.exponentialRampToValueAtTime(55, t + decay);
+
+        gain.gain.setValueAtTime(0.35, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(t);
+        osc.stop(t + decay + 0.02);
+      }
+
+      // Sand One-Bound Thud
+      playBounceSound() {
+        if (!this.enabled || !this.ctx) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(110, t);
+        osc.frequency.exponentialRampToValueAtTime(45, t + 0.08);
+
+        gain.gain.setValueAtTime(0.2, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(t);
+        osc.stop(t + 0.09);
+      }
+
+      startBgm() {
+        if (this.isPlayingBgm || !this.enabled) return;
+        this.isPlayingBgm = true;
+        const stepTime = (60 / this.tempo) / 4 * 1000; // 16th note in ms
+
+        this.intervalId = setInterval(() => {
+          if (!this.enabled) return;
+          const s = this.step % 16;
+          // Surdo on beat 0 and 8
+          if (s === 0) this.playSurdo(false);
+          if (s === 8) this.playSurdo(true);
+
+          // Pandeiro shaker
+          this.playPandeiro(s % 4 === 2);
+
+          // Agogo syncopation
+          if (s === 3 || s === 6 || s === 11 || s === 14) {
+            this.playAgogo(s > 6);
+          }
+
+          this.step++;
+        }, stepTime);
+      }
+
+      stopBgm() {
+        this.isPlayingBgm = false;
+        if (this.intervalId) {
+          clearInterval(this.intervalId);
+          this.intervalId = null;
+        }
+      }
+    }
+
+    const sound = new BrazilianSoundEngine();
+
+    /* =========================================================
+       2. GAME CONSTANTS & STATE
+       ========================================================= */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Canvas resolution tracking & Dynamic Screen-Fit Layout
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let centerX = width / 2;
+    let centerY = height * 0.65;
+    let pitchHorizon = height * 0.38;
+    let circleRadiusX = 175;
+    let circleRadiusY = 110;
+
+    function calculateScreenFitLayout() {
+      // 1) Pitch Horizon: Stadium stands occupy upper ~38%, lush green pitch occupies lower ~62%
+      pitchHorizon = Math.max(160, height * 0.38);
+
+      // 2) Playable Grass Area between pitchHorizon and bottom screen/controls
+      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      const bottomReserved = isTouch ? 135 : 45;
+      const playableTop = pitchHorizon + 25;
+      const playableBottom = height - bottomReserved;
+
+      // 3) Center of 4-player circle: perfectly centered in playable pitch
+      centerX = width / 2;
+      centerY = (playableTop + playableBottom) / 2;
+
+      // 4) Dynamic Circle Radii: proportional to screen width and pitch height
+      const maxRx = Math.min((width - 60) * 0.36, (playableBottom - playableTop) * 0.50, 215);
+      circleRadiusX = Math.max(120, maxRx);
+      circleRadiusY = circleRadiusX * 0.62; // 2.5D perspective ellipse ratio
+    }
+
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      calculateScreenFitLayout();
+      if (currentMode) repositionCirclePlayers();
+    }
+    window.addEventListener('resize', resizeCanvas);
+    calculateScreenFitLayout();
+
+    // Modes: 'SOLO', 'AI', 'MULTI'
+    let currentMode = null; 
+    let gameState = 'MENU'; // 'MENU', 'PLAYING', 'GAMEOVER'
+    let isPausedForGuide = false;
+
+    // Game stats
+    let score = 0;
+    let rally = 0;
+    let combo = 0;
+    let maxCombo = 0;
+    let lives = 3;
+    let screenShake = 0;
+
+    // Real-time speed multiplier (0.5x, 0.8x, 1.0x) - Ultra-slow floaty by default
+    let speedMultiplier = 0.5;
+
+    // Timing parameters for One-Bound Altinha
+    const TIMING = {
+      IDEAL_Z: 40,
+      PERFECT_TOLERANCE: 45,
+      GREAT_TOLERANCE: 90,
+      GOOD_TOLERANCE: 140,
+      HIT_DISTANCE: 110
+    };
+
+    // Particles, floating texts & ambient birds
+    let particles = [];
+    let floatingTexts = [];
+    let seagulls = [
+      { x: 100, y: 120, speed: 1.1, wingPhase: 0 },
+      { x: 300, y: 160, speed: 0.9, wingPhase: 2.1 },
+      { x: 600, y: 100, speed: 1.3, wingPhase: 4.2 }
+    ];
+
+    // Ocean waves animation phase
+    let wavePhase = 0;
+    // Crowd animation & stadium timer
+    let stadiumTick = 0;
+
+    /* =========================================================
+       3. BALL & CHARACTERS
+       ========================================================= */
+    const ball = {
+      x: 0,
+      y: 0,
+      z: 160,    // Height above ground
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      radius: 12,
+      bounces: 0, // 0 = in air, 1 = one-bound, 2 = fault
+      rotation: 0,
+      spin: 0.05,
+      trail: [],
+      targetId: 0 // Index of player or AI meant to receive
+    };
+
+    // Main Player
+    const player = {
+      id: 0,
+      name: '나 (Player)',
+      x: 0,
+      y: 110,
+      radius: 26,
+      speed: 3.4, // Reduced from 6.2 for relaxed, stable control
+      color: '#fbbf24',      // Brazil Gold Yellow
+      shortsColor: '#15803d',// Green
+      skinColor: '#e0a96d',
+      facingLeft: false,
+      state: 'idle',         // idle, run, normal(inside), acrobatic(bicycle), trick(rabona), spike(dive)
+      animTimer: 0,
+      animDuration: 28,
+      walkPhase: 0,
+      currentSkillName: ''
+    };
+
+    // AI Teammates
+    let mates = [];
+
+    function setupTeammates(mode) {
+      mates = [];
+      if (mode === 'SOLO') {
+        // Solo mode
+      } else if (mode === 'AI') {
+        // 3 AI mates in stadium circle
+        mates = [
+          { id: 1, name: 'Lucas', angle: Math.PI * 0.9, dist: 175, x: 0, y: 0, color: '#38bdf8', shortsColor: '#1e293b', skinColor: '#8d5524', state: 'idle', animTimer: 0, animDuration: 28, walkPhase: 0, skillName: '' },
+          { id: 2, name: 'Neymar Jr', angle: Math.PI * 1.5, dist: 165, x: 0, y: 0, color: '#ec4899', shortsColor: '#fef08a', skinColor: '#f1c27d', state: 'idle', animTimer: 0, animDuration: 28, walkPhase: 0, skillName: '' },
+          { id: 3, name: 'Vinicius', angle: Math.PI * 0.1, dist: 175, x: 0, y: 0, color: '#22c55e', shortsColor: '#0f172a', skinColor: '#5c3818', state: 'idle', animTimer: 0, animDuration: 28, walkPhase: 0, skillName: '' }
+        ];
+      } else if (mode === 'MULTI') {
+        mates = [
+          { id: 1, name: '게스트 1', angle: Math.PI * 0.9, dist: 175, x: 0, y: 0, color: '#38bdf8', shortsColor: '#1e293b', skinColor: '#8d5524', state: 'idle', animTimer: 0, animDuration: 28, walkPhase: 0, skillName: '', isPeer: true },
+          { id: 2, name: '게스트 2', angle: Math.PI * 1.5, dist: 165, x: 0, y: 0, color: '#a855f7', shortsColor: '#fef08a', skinColor: '#f1c27d', state: 'idle', animTimer: 0, animDuration: 28, walkPhase: 0, skillName: '', isPeer: true }
+        ];
+      }
+      repositionCirclePlayers();
+    }
+
+    function repositionCirclePlayers() {
+      calculateScreenFitLayout();
+
+      // Reposition player at south of circle (neatly above bottom margin/controls)
+      player.x = centerX;
+      player.y = centerY + circleRadiusY * 0.95;
+
+      mates.forEach(m => {
+        m.x = centerX + Math.cos(m.angle) * circleRadiusX;
+        m.y = centerY + Math.sin(m.angle) * circleRadiusY;
+      });
+    }
+
+    /* =========================================================
+       4. BALL PHYSICS & PASSING (ULTRA-SLOW BEACH FLOAT)
+       ========================================================= */
+    function passBall(fromX, fromY, fromZ, targetId, powerZ = 7.0) {
+      ball.x = fromX;
+      ball.y = fromY;
+      ball.z = Math.max(fromZ, 22);
+      ball.bounces = 0;
+      ball.targetId = targetId;
+      updateBounceUI();
+
+      let targetX = player.x;
+      let targetY = player.y;
+
+      if (targetId !== 0) {
+        const tm = mates.find(m => m.id === targetId);
+        if (tm) {
+          targetX = tm.x + (Math.random() - 0.5) * 20;
+          targetY = tm.y + (Math.random() - 0.5) * 15;
+        }
+      } else {
+        // If passing to player, small natural spread
+        targetX = player.x + (Math.random() - 0.5) * 35;
+        targetY = player.y + (Math.random() - 0.5) * 25;
+      }
+
+      // In Solo mode, player hits ball back up and slightly forward/around to practice
+      if (currentMode === 'SOLO') {
+        const angle = Math.random() * Math.PI * 2;
+        const drift = 50 + Math.random() * 60;
+        targetX = centerX + Math.cos(angle) * drift;
+        targetY = centerY + Math.sin(angle) * (drift * 0.6);
+        ball.targetId = 0;
+      }
+
+      // Very low gravity for that relaxing, floating beach sensation
+      const effectiveGravity = 0.09 * speedMultiplier;
+      ball.vz = powerZ * speedMultiplier;
+
+      // Calculate time of flight: z0 + vz*t - 0.5*g*t^2 = 0
+      const tFlight = (ball.vz + Math.sqrt(ball.vz * ball.vz + 2 * effectiveGravity * ball.z)) / effectiveGravity;
+      ball.vx = (targetX - ball.x) / tFlight;
+      ball.vy = (targetY - ball.y) / tFlight;
+      ball.spin = (Math.random() - 0.5) * 0.12;
+    }
+
+    function handleRallyFail() {
+      lives--;
+      combo = 0;
+      updateLivesUI();
+      updateComboUI();
+      screenShake = 12;
+
+      spawnFloatingText('바운드 초과! 랠리 미스', ball.x, ball.y - 20, '#f43f5e', 22);
+      spawnSandParticles(ball.x, ball.y, 25, false);
+
+      if (lives <= 0) {
+        endGame();
+      } else {
+        // Reset ball softly after fault
+        setTimeout(() => {
+          if (gameState === 'PLAYING') {
+            ball.x = centerX;
+            ball.y = centerY;
+            passBall(centerX, centerY, 150, 0, 6.5);
+          }
+        }, 1200);
+      }
+    }
+
+    /* =========================================================
+       5. PLAYER ACTION & TIMING HIT
+       ========================================================= */
+    function performAction(actionType) {
+      if (gameState !== 'PLAYING' || isPausedForGuide) return;
+
+      const dx = player.x - ball.x;
+      const dy = player.y - ball.y;
+      const dist = Math.hypot(dx, dy);
+
+      const inRange = dist < TIMING.HIT_DISTANCE;
+      const heightDiff = Math.abs(ball.z - TIMING.IDEAL_Z);
+
+      player.state = actionType;
+      player.animDuration = (actionType === 'acrobatic' || actionType === 'spike') ? 34 : 26;
+      player.animTimer = player.animDuration;
+      player.facingLeft = ball.x < player.x;
+
+      if (inRange && heightDiff <= TIMING.GOOD_TOLERANCE) {
+        let rating = 'GOOD!';
+        let baseScore = 100;
+        let color = '#38bdf8';
+        let sfxType = 'normal';
+
+        if (heightDiff <= TIMING.PERFECT_TOLERANCE) {
+          rating = 'PERFECT!';
+          baseScore = 300;
+          color = '#facc15';
+          sfxType = 'perfect';
+          screenShake = 6;
+        } else if (heightDiff <= TIMING.GREAT_TOLERANCE) {
+          rating = 'GREAT!';
+          baseScore = 200;
+          color = '#4ade80';
+          screenShake = 3;
+        }
+
+        let skillName = '인사이드 킥';
+        let multiplier = 1.0;
+        let powerZ = 7.0;
+
+        if (actionType === 'acrobatic') {
+          skillName = ball.z > 65 ? '바이시클 킥' : '시저스 발리';
+          multiplier = 1.8;
+          powerZ = 8.2;
+        } else if (actionType === 'trick') {
+          skillName = ball.z > 55 ? '숄더 트래핑' : '라보나 힐';
+          multiplier = 1.5;
+          powerZ = 7.4;
+        } else if (actionType === 'spike') {
+          skillName = ball.z > 65 ? '다이빙 헤더' : '발리 스파이크';
+          multiplier = 2.4;
+          powerZ = 9.0;
+          sfxType = 'spike';
+          screenShake = 10;
+        }
+
+        // Stats accumulation
+        rally++;
+        combo++;
+        if (combo > maxCombo) maxCombo = combo;
+        const pts = Math.round(baseScore * multiplier * (1 + combo * 0.15));
+        score += pts;
+
+        player.currentSkillName = skillName;
+        spawnFloatingText(`${rating} +${pts}`, ball.x, ball.y - ball.z * 0.65 - 10, color, rating.includes('PERFECT') ? 25 : 20);
+        spawnFloatingText(skillName, player.x, player.y - 45, '#ffffff', 13);
+        spawnSandParticles(player.x, player.y, 20, true);
+
+        sound.playKickSound(sfxType);
+        updateScoreUI();
+        updateComboUI();
+
+        // Pass selection
+        if (currentMode === 'SOLO') {
+          passBall(player.x, player.y, ball.z, 0, powerZ);
+        } else if (currentMode === 'AI') {
+          // Select random teammate
+          const nextTarget = (Math.floor(Math.random() * mates.length)) + 1;
+          passBall(player.x, player.y, ball.z, nextTarget, powerZ);
+        } else if (currentMode === 'MULTI') {
+          // Broadcast kick to peers and pick next player
+          const nextTarget = mates.length > 0 ? mates[Math.floor(Math.random() * mates.length)].id : 0;
+          passBall(player.x, player.y, ball.z, nextTarget, powerZ);
+          broadcastPeerData({
+            type: 'KICK',
+            playerPos: { x: player.x, y: player.y },
+            ballState: { x: ball.x, y: ball.y, z: ball.z, vx: ball.vx, vy: ball.vy, vz: ball.vz },
+            skillName,
+            rally,
+            score
+          });
+        }
+      } else {
+        // Missed swing
+        spawnFloatingText('MISS!', player.x, player.y - 30, '#ef4444', 18);
+        spawnSandParticles(player.x, player.y, 6, false);
+      }
+    }
+
+    /* =========================================================
+       6. KEYBOARD & TOUCH CONTROLS
+       ========================================================= */
+    const keys = {};
+
+    window.addEventListener('keydown', (e) => {
+      keys[e.key] = true;
+      keys[e.code] = true;
+      if (e.key === 'ㅁ') keys['a'] = true;
+      if (e.key === 'ㅇ') keys['d'] = true;
+      if (e.key === 'ㅈ') keys['w'] = true;
+      if (e.key === 'ㄴ') keys['s'] = true;
+
+      // Audio init on first interaction
+      sound.init();
+
+      if (e.key === 'h' || e.key === 'H' || e.code === 'KeyH' || e.key === 'Tab') {
+        e.preventDefault();
+        toggleGuideModal();
+        return;
+      }
+
+      if (gameState !== 'PLAYING' || isPausedForGuide) return;
+
+      if (e.key === 'z' || e.key === 'Z' || e.code === 'KeyZ' || e.key === 'j' || e.key === 'J' || e.code === 'KeyJ' || e.key === 'ㅋ' || e.key === 'ㅓ') {
+        performAction('normal');
+      } else if (e.key === 'x' || e.key === 'X' || e.code === 'KeyX' || e.key === 'k' || e.key === 'K' || e.code === 'KeyK' || e.key === 'ㅌ' || e.key === 'ㅏ') {
+        performAction('acrobatic');
+      } else if (e.key === 'c' || e.key === 'C' || e.code === 'KeyC' || e.key === 'l' || e.key === 'L' || e.code === 'KeyL' || e.key === 'ㅊ' || e.key === 'ㅣ') {
+        performAction('trick');
+      } else if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        performAction('spike');
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.key] = false;
+      keys[e.code] = false;
+      if (e.key === 'ㅁ') keys['a'] = false;
+      if (e.key === 'ㅇ') keys['d'] = false;
+      if (e.key === 'ㅈ') keys['w'] = false;
+      if (e.key === 'ㄴ') keys['s'] = false;
+    });
+
+    // Mobile Virtual Joystick Setup
+    const joystickZone = document.getElementById('joystickZone');
+    const joystickKnob = document.getElementById('joystickKnob');
+    let touchMoveVector = { x: 0, y: 0 };
+    let joystickActive = false;
+    let joystickCenter = { x: 0, y: 0 };
+
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      document.getElementById('mobileControls').classList.remove('hidden');
+      document.getElementById('mobileControls').classList.add('flex');
+    }
+
+    joystickZone.addEventListener('touchstart', (e) => {
+      sound.init();
+      joystickActive = true;
+      const rect = joystickZone.getBoundingClientRect();
+      joystickCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      handleJoystickMove(e.touches[0]);
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      if (!joystickActive) return;
+      handleJoystickMove(e.touches[0]);
+    }, { passive: false });
+
+    window.addEventListener('touchend', () => {
+      if (!joystickActive) return;
+      joystickActive = false;
+      touchMoveVector = { x: 0, y: 0 };
+      joystickKnob.style.transform = `translate(0px, 0px)`;
+    });
+
+    function handleJoystickMove(touch) {
+      const dx = touch.clientX - joystickCenter.x;
+      const dy = touch.clientY - joystickCenter.y;
+      const maxR = 40;
+      const dist = Math.min(Math.hypot(dx, dy), maxR);
+      const angle = Math.atan2(dy, dx);
+
+      const knobX = Math.cos(angle) * dist;
+      const knobY = Math.sin(angle) * dist;
+      joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+
+      touchMoveVector.x = knobX / maxR;
+      touchMoveVector.y = knobY / maxR;
+    }
+
+    // Touch Action Buttons
+    document.getElementById('touchBtnZ').addEventListener('touchstart', (e) => { e.preventDefault(); sound.init(); performAction('normal'); });
+    document.getElementById('touchBtnX').addEventListener('touchstart', (e) => { e.preventDefault(); sound.init(); performAction('acrobatic'); });
+    document.getElementById('touchBtnC').addEventListener('touchstart', (e) => { e.preventDefault(); sound.init(); performAction('trick'); });
+    document.getElementById('touchBtnSpace').addEventListener('touchstart', (e) => { e.preventDefault(); sound.init(); performAction('spike'); });
+
+    /* =========================================================
+       7. PARTICLE & VISUAL EFFECTS ENGINE
+       ========================================================= */
+    function spawnSandParticles(x, y, count, golden = false) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = 1.0 + Math.random() * 3.5;
+        particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd - (Math.random() * 2),
+        size: 2.5 + Math.random() * 3.5,
+        color: golden ? '#fde047' : '#e2b378',
+        alpha: 1.0,
+        decay: 0.025 + Math.random() * 0.03
+      });
+    }
+  }
+
+  function spawnFloatingText(text, x, y, color, size = 18) {
+    floatingTexts.push({
+      text,
+      x,
+      y,
+      color,
+      size,
+      alpha: 1.0,
+      vy: -1.2,
+      life: 45
+    });
+  }
+
+  /* =========================================================
+     8. GRAPHICS RENDERING (MARACANÃ FOOTBALL STADIUM)
+     ========================================================= */
+  function drawBrazilianBeachBackground() {
+    stadiumTick += 0.05;
+
+    // Clear canvas cleanly to prevent ghosting or graphic artifact glitches
+    ctx.clearRect(0, 0, width, height);
+
+    // 1) Night Stadium Sky & Lighting
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.45);
+    skyGrad.addColorStop(0, '#060d1a');
+    skyGrad.addColorStop(0.6, '#0c1b33');
+    skyGrad.addColorStop(1, '#1e293b');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, width, height * 0.45);
+
+    // 2) Huge Maracanã Stadium Grandstands & Cheering Crowd
+    const standTop = height * 0.09;
+    // pitchHorizon is computed dynamically in calculateScreenFitLayout()
+
+    // Lower/Upper tiered stand concrete arches
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.ellipse(centerX, pitchHorizon + 10, width * 0.85, (pitchHorizon - standTop) * 1.3, 0, Math.PI, 0, true);
+    ctx.fill();
+
+    // Crowds (Animated colored spectators & waving Brazilian colors)
+    const crowdRows = 8;
+    for (let r = 0; r < crowdRows; r++) {
+      const rowY = standTop + (r / crowdRows) * (pitchHorizon - standTop);
+      const yFrac = r / crowdRows;
+      const rowWidth = width * (0.6 + yFrac * 0.45);
+      const startX = centerX - rowWidth / 2;
+      const count = Math.floor(rowWidth / 14);
+
+      for (let c = 0; c < count; c++) {
+        const cx = startX + c * 14 + (r % 2) * 7;
+        const jumpOffset = Math.sin(stadiumTick * 2.5 + c * 0.35 + r) * 2;
+        const colorSeed = (c * 7 + r * 13) % 4;
+        let fanColor = '#eab308'; // Brazil Yellow
+        if (colorSeed === 1) fanColor = '#16a34a'; // Green
+        else if (colorSeed === 2) fanColor = '#38bdf8'; // Blue
+        else if (colorSeed === 3) fanColor = '#ffffff';
+
+        ctx.fillStyle = fanColor;
+        ctx.beginPath();
+        ctx.arc(cx, rowY + jumpOffset, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 3) Giant Jumbotron / Scoreboard in Center of Stadium
+    const jumbotronW = Math.min(260, width * 0.45);
+    const jumbotronH = 50;
+    const jumbotronX = centerX - jumbotronW / 2;
+    const jumbotronY = height * 0.05;
+
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(jumbotronX, jumbotronY, jumbotronW, jumbotronH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(jumbotronX + 4, jumbotronY + 4, jumbotronW - 8, jumbotronH - 8);
+
+    ctx.font = '900 12px Fredoka, sans-serif';
+    ctx.fillStyle = '#fde047';
+    ctx.textAlign = 'center';
+    ctx.fillText('ESTÁDIO DO MARACANÃ', centerX, jumbotronY + 18);
+    ctx.font = '700 11px Inter, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`RALLY: ${rally}  |  SCORE: ${score}`, centerX, jumbotronY + 36);
+
+    // 4) Digital LED Advertising Boards along Pitch Perimeter
+    const ledY = pitchHorizon - 10;
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(0, ledY, width, 18);
+
+    ctx.font = 'bold 9px Inter';
+    ctx.fillStyle = '#38bdf8';
+    const ledCycle = (Date.now() / 35) % 300;
+    for (let lx = -ledCycle; lx < width + 200; lx += 220) {
+      ctx.fillText('⚡ VIVA O FUTEBOL BRASIL ★ ALTINHA CUP 2026', lx, ledY + 12);
+    }
+
+    // 5) Lush Green Stadium Pitch (Mower-Striped Lawn Pattern)
+    const grassGrad = ctx.createLinearGradient(0, pitchHorizon, 0, height);
+    grassGrad.addColorStop(0, '#15803d');
+    grassGrad.addColorStop(0.5, '#16a34a');
+    grassGrad.addColorStop(1, '#14532d');
+    ctx.fillStyle = grassGrad;
+    ctx.fillRect(0, pitchHorizon, width, height - pitchHorizon);
+
+    // Alternating light/dark green mower stripes
+    const stripeCount = 14;
+    for (let s = 0; s < stripeCount; s++) {
+      const stripeY = pitchHorizon + (s / stripeCount) * (height - pitchHorizon);
+      const stripeH = (height - pitchHorizon) / stripeCount;
+      if (s % 2 === 0) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.fillRect(0, stripeY, width, stripeH);
+      }
+    }
+
+    // 6) Official White Pitch Field Markings (2.5D Perspective - Aligned with 4 players)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.lineWidth = 3.5;
+
+    // Center Circle & Center Spot (Perfect screen-fit around 4 players)
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, circleRadiusX * 1.15, circleRadiusY * 1.15, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Halfway Line
+    ctx.beginPath();
+    ctx.moveTo(centerX - circleRadiusX * 1.8, centerY);
+    ctx.lineTo(centerX + circleRadiusX * 1.8, centerY);
+    ctx.stroke();
+
+    // Passing Orbit Guide Ellipse (as seen in a.png)
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, circleRadiusX * 1.03, circleRadiusY * 1.03, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 7) Stadium Floodlight Towers with Volumetric Cones
+    drawStadiumFloodlight(Math.max(30, width * 0.065), height * 0.14, 1);
+    drawStadiumFloodlight(Math.min(width - 30, width * 0.935), height * 0.14, -1);
+  }
+
+  function drawStadiumFloodlight(x, y, dir = 1) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Light Tower Lattice Pole
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-dir * 25, 160);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(dir * 10, 160);
+    ctx.stroke();
+
+    // Floodlight Lamp Head Bank (4x2 Matrix of glowing lamps)
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-22, -18, 44, 26);
+
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < 4; c++) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-15 + c * 10, -11 + r * 13, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Volumetric Light Cone projecting onto pitch
+    const coneGrad = ctx.createRadialGradient(0, 0, 20, dir * 180, 260, 360);
+    coneGrad.addColorStop(0, 'rgba(254, 240, 138, 0.35)');
+    coneGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+    coneGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+    ctx.fillStyle = coneGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(dir * 380, 320);
+    ctx.lineTo(dir * 120, 360);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  /* =========================================================
+     9. BALL SHADOW, TIMING RING & 3D BALL RENDERING
+     ========================================================= */
+  function drawBallShadowAndTimingRing() {
+      // 1) Dynamic Ground Shadow based on ball altitude (z)
+      const shadowScale = Math.max(0.2, 1 - ball.z / 320);
+      const shadowAlpha = Math.max(0.12, 0.55 - ball.z / 380);
+
+      ctx.save();
+      ctx.fillStyle = `rgba(5, 20, 10, ${shadowAlpha})`;
+      ctx.beginPath();
+      ctx.ellipse(ball.x, ball.y, ball.radius * 1.5 * shadowScale, ball.radius * 0.75 * shadowScale, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2) Rhythm Action Timing Ring
+      // The ring shrinks toward the golden target circle as the ball descends toward hitting altitude
+      const targetRadius = 32;
+      const heightOffset = Math.max(0, ball.z - TIMING.IDEAL_Z);
+      const ringRadius = targetRadius + heightOffset * 0.42;
+
+      // Inner Target Indicator (Golden Landing Spot)
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = ball.bounces === 1 ? 'rgba(245, 158, 11, 0.85)' : 'rgba(250, 204, 21, 0.8)';
+      ctx.beginPath();
+      ctx.ellipse(ball.x, ball.y, targetRadius, targetRadius * 0.55, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Shrinking Timing Ring
+      if (ball.z > 0 && ringRadius > targetRadius) {
+        let ringColor = 'rgba(56, 189, 248, 0.85)'; // Default blue
+        const diff = Math.abs(ball.z - TIMING.IDEAL_Z);
+        if (diff <= TIMING.PERFECT_TOLERANCE) {
+          ringColor = 'rgba(250, 204, 21, 0.95)'; // Perfect Golden
+        } else if (diff <= TIMING.GREAT_TOLERANCE) {
+          ringColor = 'rgba(74, 222, 128, 0.9)'; // Great Green
+        }
+
+        ctx.strokeStyle = ringColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(ball.x, ball.y, ringRadius, ringRadius * 0.55, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 4 Crosshair ticks on ring
+        ctx.fillStyle = ringColor;
+        const tickAngles = [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5];
+        tickAngles.forEach(ang => {
+          const tx = ball.x + Math.cos(ang) * ringRadius;
+          const ty = ball.y + Math.sin(ang) * (ringRadius * 0.55);
+          ctx.beginPath();
+          ctx.arc(tx, ty, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+      ctx.restore();
+    }
+
+    function drawBall() {
+      const screenY = ball.y - ball.z;
+
+      // Ball Trailing Glow
+      if (ball.trail && ball.trail.length > 1) {
+        ctx.save();
+        for (let i = 0; i < ball.trail.length - 1; i++) {
+          const pt = ball.trail[i];
+          const trScreenY = pt.y - pt.z;
+          const alpha = (i / ball.trail.length) * 0.35;
+          ctx.strokeStyle = `rgba(253, 224, 71, ${alpha})`;
+          ctx.lineWidth = ball.radius * (i / ball.trail.length) * 1.2;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(pt.x, trScreenY);
+          const nextPt = ball.trail[i + 1];
+          ctx.lineTo(nextPt.x, nextPt.y - nextPt.z);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      ctx.save();
+      ctx.translate(ball.x, screenY);
+      ctx.rotate(ball.rotation);
+
+      // Football base with 3D spherical gradient
+      const ballGrad = ctx.createRadialGradient(-ball.radius * 0.3, -ball.radius * 0.3, 2, 0, 0, ball.radius);
+      ballGrad.addColorStop(0, '#ffffff');
+      ballGrad.addColorStop(0.7, '#f1f5f9');
+      ballGrad.addColorStop(1, '#94a3b8');
+
+      ctx.fillStyle = ballGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pentagonal Patches (Classic Telstar Football Pattern)
+      ctx.fillStyle = '#0f172a';
+      // Center pentagon
+      ctx.beginPath();
+      for (let p = 0; p < 5; p++) {
+        const pang = (p / 5) * Math.PI * 2 - Math.PI / 2;
+        const px = Math.cos(pang) * (ball.radius * 0.42);
+        const py = Math.sin(pang) * (ball.radius * 0.42);
+        if (p === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // Outer seam patches
+      for (let p = 0; p < 5; p++) {
+        const pang = (p / 5) * Math.PI * 2 - Math.PI / 2;
+        const ox = Math.cos(pang) * (ball.radius * 0.9);
+        const oy = Math.sin(pang) * (ball.radius * 0.9);
+        ctx.beginPath();
+        ctx.arc(ox, oy, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Ball Outline
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.4)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    /* =========================================================
+       10. CHARACTER RENDERING & SKILL MOTION ANIMATION
+       ========================================================= */
+    function drawCharacter(c, isMainPlayer = false) {
+      ctx.save();
+      ctx.translate(c.x, c.y);
+
+      // 1) Dynamic Ground Shadow based on altitude / jump
+      let jumpZ = 0;
+      let rotAngle = 0;
+      const progress = c.animDuration > 0 ? (1 - c.animTimer / c.animDuration) : 0; // 0 -> 1
+
+      // Skill-specific procedural motion poses
+      let torsoAngle = 0;
+      let headX = 0, headY = -36;
+      let leftHipX = -6, leftHipY = -12;
+      let rightHipX = 6, rightHipY = -12;
+      let leftFootX = -7, leftFootY = 0;
+      let rightFootX = 7, rightFootY = 0;
+      let leftHandX = -15, leftHandY = -20;
+      let rightHandX = 15, rightHandY = -20;
+
+      if (c.animTimer > 0) {
+        if (c.state === 'normal') {
+          // [Z] Inside Kick: Torso leans back, kicking leg swings outward in a side-volley motion
+          const swing = Math.sin(progress * Math.PI);
+          torsoAngle = -0.25 * swing;
+          jumpZ = 12 * swing;
+          rightFootX = 18 * swing;
+          rightFootY = -14 * swing;
+          leftFootY = 2; // Plant foot
+          rightHandY = -30 * swing;
+          leftHandX = -20 * swing;
+        } 
+        else if (c.state === 'acrobatic') {
+          // [X] Bicycle Kick: Full mid-air backflip rotation with scissors legs
+          const flight = Math.sin(progress * Math.PI);
+          jumpZ = 48 * flight;
+          rotAngle = -Math.PI * 1.8 * progress; // Dynamic flip
+          torsoAngle = -0.6;
+          // Scissor legs
+          rightFootX = 22 * Math.cos(progress * Math.PI * 2);
+          rightFootY = -25 * Math.sin(progress * Math.PI * 2);
+          leftFootX = -18 * Math.cos(progress * Math.PI * 2);
+          leftFootY = 15 * Math.sin(progress * Math.PI * 2);
+          leftHandY = -32;
+          rightHandY = -32;
+        } 
+        else if (c.state === 'trick') {
+          // [C] Rabona Trick: Plant foot firmly, kicking leg crosses behind supporting leg with heel raised
+          const flick = Math.sin(progress * Math.PI);
+          torsoAngle = 0.3 * flick;
+          jumpZ = 8 * flick;
+          // Cross leg behind supporting leg
+          rightFootX = -14 * flick;
+          rightFootY = -12 * flick;
+          leftFootX = 8;
+          leftHandX = 18 * flick;
+          rightHandX = -18 * flick;
+        } 
+        else if (c.state === 'spike') {
+          // [Space] Diving Header: Full forward horizontal dive parallel to ground
+          const dive = Math.sin(progress * Math.PI);
+          jumpZ = 28 * dive;
+          torsoAngle = 1.35 * dive; // Flatten horizontal forward
+          headX = 24 * dive;
+          headY = -18 - 8 * dive;
+          leftFootX = -24 * dive;
+          leftFootY = -10 * dive;
+          rightFootX = -28 * dive;
+          rightFootY = -4 * dive;
+          leftHandX = 12 * dive;
+          rightHandX = -8 * dive;
+        }
+      } else {
+        // Idle / Running Cycle
+        if (c.walkPhase) {
+          const w = Math.sin(c.walkPhase);
+          leftFootX = -7 + w * 8;
+          rightFootX = 7 - w * 8;
+          leftHandX = -14 - w * 7;
+          rightHandX = 14 + w * 7;
+          torsoAngle = (c.facingLeft ? -1 : 1) * 0.08;
+        }
+      }
+
+      // Ground Shadow
+      const shadowScale = Math.max(0.3, 1 - (jumpZ / 80));
+      ctx.fillStyle = `rgba(10, 25, 10, ${0.45 * shadowScale})`;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, c.radius * 1.1 * shadowScale, c.radius * 0.5 * shadowScale, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Lift player for mid-air jumps/dives
+      ctx.translate(0, -jumpZ);
+
+      // Facing orientation
+      if (c.facingLeft) ctx.scale(-1, 1);
+      if (rotAngle !== 0) ctx.rotate(rotAngle);
+
+      // --- PROCEDURAL SKELETAL RENDERING ---
+      ctx.save();
+      ctx.rotate(torsoAngle);
+
+      // Legs & Boots
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = c.skinColor || '#f1c27d';
+      ctx.lineCap = 'round';
+
+      // Left Leg
+      ctx.beginPath();
+      ctx.moveTo(leftHipX, leftHipY);
+      ctx.lineTo(leftFootX, leftFootY);
+      ctx.stroke();
+
+      // Right Leg (Kicking Leg)
+      ctx.beginPath();
+      ctx.moveTo(rightHipX, rightHipY);
+      ctx.lineTo(rightFootX, rightFootY);
+      ctx.stroke();
+
+      // Football Boots (Cleats with white studs)
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.ellipse(leftFootX + 3, leftFootY, 6, 3.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(rightFootX + 3, rightFootY, 6, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Team Shorts
+      ctx.fillStyle = c.shortsColor || '#15803d';
+      ctx.beginPath();
+      ctx.roundRect(-10, -18, 20, 11, 4);
+      ctx.fill();
+
+      // Torso / Brazil Jersey
+      ctx.fillStyle = c.color;
+      ctx.beginPath();
+      ctx.roundRect(-11, -34, 22, 19, 5);
+      ctx.fill();
+
+      // Number on back of kit
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-2, -30, 4, 12);
+
+      // Arms
+      ctx.lineWidth = 4.5;
+      ctx.strokeStyle = c.skinColor || '#f1c27d';
+      ctx.beginPath();
+      ctx.moveTo(-10, -30);
+      ctx.lineTo(leftHandX, leftHandY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(10, -30);
+      ctx.lineTo(rightHandX, rightHandY);
+      ctx.stroke();
+
+      // Head & Hair
+      ctx.fillStyle = c.skinColor || '#f1c27d';
+      ctx.beginPath();
+      ctx.arc(headX, headY, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e1b4b'; // Hair
+      ctx.beginPath();
+      ctx.arc(headX, headY - 3, 9.5, Math.PI, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+      ctx.restore();
+
+      // Name & Target Arrow
+      ctx.save();
+      ctx.translate(c.x, c.y - jumpZ);
+      if (ball.targetId === c.id) {
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.moveTo(0, -68);
+        ctx.lineTo(-8, -78);
+        ctx.lineTo(8, -78);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.font = 'bold 11px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = isMainPlayer ? '#fde047' : '#ffffff';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 4;
+      ctx.fillText(c.name, 0, -54);
+      ctx.restore();
+    }
+
+    /* =========================================================
+       11. AI BEHAVIOR & POSITIONING
+       ========================================================= */
+    function updateAI() {
+      if (currentMode !== 'AI') return;
+
+      mates.forEach(tm => {
+        if (tm.animTimer > 0) {
+          tm.animTimer--;
+          if (tm.animTimer === 0) tm.state = 'idle';
+        }
+
+        // If ball target is this teammate, step toward ball x,y to meet it
+        if (ball.targetId === tm.id) {
+          const dx = ball.x - tm.x;
+          const dy = ball.y - tm.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist > 8) {
+            tm.x += (dx / dist) * 2.8;
+            tm.y += (dy / dist) * 2.4;
+            tm.walkPhase = (tm.walkPhase || 0) + 0.3;
+          }
+          tm.facingLeft = ball.x < tm.x;
+
+          // AI hits ball when it reaches striking height
+          if (dist < 42 && ball.z <= TIMING.IDEAL_Z + 15 && ball.vz < 0) {
+            // Pick a skill motion for AI
+            const aiSkills = ['normal', 'acrobatic', 'trick'];
+            const chosenSkill = aiSkills[Math.floor(Math.random() * aiSkills.length)];
+            tm.state = chosenSkill;
+            tm.animDuration = chosenSkill === 'acrobatic' ? 32 : 24;
+            tm.animTimer = tm.animDuration;
+
+            rally++;
+            combo++;
+            if (combo > maxCombo) maxCombo = combo;
+            score += Math.round(150 * (1 + combo * 0.1));
+
+            sound.playKickSound(chosenSkill === 'acrobatic' ? 'perfect' : 'normal');
+            spawnFloatingText(chosenSkill === 'acrobatic' ? 'BICYCLE!' : 'PASS!', tm.x, tm.y - 40, '#38bdf8', 16);
+            spawnSandParticles(tm.x, tm.y, 14, false);
+
+            updateScoreUI();
+            updateComboUI();
+
+            // AI chooses next receiver
+            const receivers = [0, ...mates.filter(m => m.id !== tm.id).map(m => m.id)];
+            const nextReceiver = Math.random() < 0.55 ? 0 : receivers[Math.floor(Math.random() * receivers.length)];
+            passBall(tm.x, tm.y, ball.z, nextReceiver, chosenSkill === 'acrobatic' ? 8.2 : 7.2);
+          }
+        } else {
+          // Return gently to original circle post (screen-fit responsive)
+          const originX = centerX + Math.cos(tm.angle) * circleRadiusX;
+          const originY = centerY + Math.sin(tm.angle) * circleRadiusY;
+          tm.x += (originX - tm.x) * 0.04;
+          tm.y += (originY - tm.y) * 0.04;
+        }
+      });
+    }
+
+    /* =========================================================
+       12. MULTIPLAYER NETWORKING (PEERJS ROOM CODE)
+       ========================================================= */
+    let peer = null;
+    let connections = [];
+    let isHost = false;
+    let myRoomCode = '';
+
+    function initPeerMultiplayer(asHost, roomCodeToJoin = null) {
+      isHost = asHost;
+      connections = [];
+
+      // Generate 4-letter Brazilian room code (e.g. RIO8, SAMB)
+      myRoomCode = roomCodeToJoin ? roomCodeToJoin.toUpperCase() : ('RIO' + Math.floor(10 + Math.random() * 89));
+
+      try {
+        peer = new Peer(`altinha-${myRoomCode}`, {
+          debug: 1
+        });
+
+        peer.on('open', (id) => {
+          if (isHost) {
+            document.getElementById('generatedRoomCode').innerText = myRoomCode;
+            document.getElementById('hudRoomCodeText').innerText = myRoomCode;
+            document.getElementById('hostPeerCountBadge').innerText = '대기 중 (0명)';
+          } else {
+            document.getElementById('joinStatusText').innerText = `방 ${myRoomCode}에 연결 중...`;
+            connectToHost(myRoomCode);
+          }
+        });
+
+        peer.on('connection', (conn) => {
+          connections.push(conn);
+          setupConnHandlers(conn);
+          if (isHost) {
+            document.getElementById('hostPeerCountBadge').innerText = `연결됨 (${connections.length}명)`;
+          }
+        });
+
+        peer.on('error', (err) => {
+          console.warn('PeerJS fallback / warning:', err);
+          if (!isHost) {
+            document.getElementById('joinStatusText').innerText = '연결 실패: 방 코드를 확인해주세요.';
+          }
+        });
+      } catch (e) {
+        console.error('Peer init error', e);
+      }
+    }
+
+    function connectToHost(targetCode) {
+      if (!peer) return;
+      const conn = peer.connect(`altinha-${targetCode}`);
+      setupConnHandlers(conn);
+    }
+
+    function setupConnHandlers(conn) {
+      conn.on('open', () => {
+        document.getElementById('joinStatusText').innerText = '연결 완료! 해변으로 입장합니다.';
+        setTimeout(() => {
+          document.getElementById('multiLobbyModal').classList.add('hidden');
+          document.getElementById('multiLobbyModal').classList.remove('flex');
+          startPlaying('MULTI');
+        }, 800);
+      });
+
+      conn.on('data', (data) => {
+        handleReceivedPeerData(data);
+      });
+
+      conn.on('close', () => {
+        connections = connections.filter(c => c !== conn);
+      });
+    }
+
+    function broadcastPeerData(payload) {
+      connections.forEach(c => {
+        if (c.open) c.send(payload);
+      });
+    }
+
+    function handleReceivedPeerData(data) {
+      if (data.type === 'KICK') {
+        rally = data.rally;
+        score = data.score;
+        updateScoreUI();
+
+        ball.x = data.ballState.x;
+        ball.y = data.ballState.y;
+        ball.z = data.ballState.z;
+        ball.vx = data.ballState.vx;
+        ball.vy = data.ballState.vy;
+        ball.vz = data.ballState.vz;
+        ball.bounces = 0;
+        updateBounceUI();
+
+        sound.playKickSound('normal');
+        spawnFloatingText(data.skillName, data.playerPos.x, data.playerPos.y - 30, '#38bdf8', 16);
+      }
+    }
+
+    /* =========================================================
+       13. GAME ENGINE LOOP
+       ========================================================= */
+    function updateGame() {
+      if (gameState !== 'PLAYING' || isPausedForGuide) return;
+
+      // 1) Player Movement
+      let moveX = 0;
+      let moveY = 0;
+
+      if (keys['ArrowLeft'] || keys['KeyA'] || keys['a'] || keys['A'] || keys['ㅁ']) moveX -= 1;
+      if (keys['ArrowRight'] || keys['KeyD'] || keys['d'] || keys['D'] || keys['ㅇ']) moveX += 1;
+      if (keys['ArrowUp'] || keys['KeyW'] || keys['w'] || keys['W'] || keys['ㅈ']) moveY -= 1;
+      if (keys['ArrowDown'] || keys['KeyS'] || keys['s'] || keys['S'] || keys['ㄴ']) moveY += 1;
+
+      // Add touch joystick input
+      if (joystickActive) {
+        moveX += touchMoveVector.x;
+        moveY += touchMoveVector.y;
+      }
+
+      if (moveX !== 0 || moveY !== 0) {
+        const len = Math.hypot(moveX, moveY);
+        player.x += (moveX / len) * player.speed;
+        player.y += (moveY / len) * (player.speed * 0.7);
+        player.facingLeft = moveX < 0;
+        player.walkPhase += 0.35;
+
+        // Occasional grass blade particle
+        if (Math.random() < 0.25) {
+          spawnSandParticles(player.x, player.y, 2, false);
+        }
+      } else {
+        player.walkPhase = 0;
+      }
+
+      // Constrain player to football pitch area (screen-fit bounded)
+      player.x = Math.max(50, Math.min(width - 50, player.x));
+      player.y = Math.max(pitchHorizon + 25, Math.min(height - 35, player.y));
+
+      if (player.animTimer > 0) {
+        player.animTimer--;
+        if (player.animTimer === 0) player.state = 'idle';
+      }
+
+      // 2) AI Teammates Update
+      updateAI();
+
+      // 3) Ball 3D Physics Simulation (Ultra-Slow Floaty Beach Gravity)
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+      ball.z += ball.vz;
+      ball.vz -= (0.09 * speedMultiplier); // Low gravity constant
+      ball.rotation += ball.spin;
+
+      // Ball Trail
+      ball.trail.push({ x: ball.x, y: ball.y, z: ball.z });
+      if (ball.trail.length > 10) ball.trail.shift();
+
+      // Sand Collision Check (z <= 0)
+      if (ball.z <= 0) {
+        ball.z = 0;
+        ball.bounces++;
+        updateBounceUI();
+        sound.playBounceSound();
+        spawnSandParticles(ball.x, ball.y, 16, false);
+
+        if (ball.bounces === 1) {
+          // 1st Bound: Permitted in Altinha! Rebound upward softly
+          spawnFloatingText('1 BOUND!', ball.x, ball.y - 25, '#fbbf24', 18);
+          ball.vz = Math.abs(ball.vz) * 0.76;
+          ball.vx *= 0.82;
+          ball.vy *= 0.82;
+        } else {
+          // 2nd Bound: Fault!
+          ball.vz = 0;
+          ball.vx = 0;
+          ball.vy = 0;
+          handleRallyFail();
+        }
+      }
+
+      // 4) Update Floating Particles & Texts
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= p.decay;
+        if (p.alpha <= 0) particles.splice(i, 1);
+      }
+
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const t = floatingTexts[i];
+        t.y += t.vy;
+        t.life--;
+        t.alpha = t.life / 45;
+        if (t.life <= 0) floatingTexts.splice(i, 1);
+      }
+
+      // Screen Shake damping
+      if (screenShake > 0) screenShake *= 0.88;
+      if (screenShake < 0.2) screenShake = 0;
+    }
+
+    function renderGame() {
+      ctx.save();
+
+      // Apply screen shake
+      if (screenShake > 0) {
+        const shakeX = (Math.random() - 0.5) * screenShake * 2;
+        const shakeY = (Math.random() - 0.5) * screenShake * 2;
+        ctx.translate(shakeX, shakeY);
+      }
+
+      // 1) Beach Environment
+      drawBrazilianBeachBackground();
+
+      // 2) Timing Ring & Ball Shadow
+      drawBallShadowAndTimingRing();
+
+      // 3) Characters sorted by Y for correct 2.5D depth
+      const renderEntities = [
+        { type: 'player', y: player.y, obj: player, isMain: true }
+      ];
+
+      mates.forEach(m => {
+        renderEntities.push({ type: 'mate', y: m.y, obj: m, isMain: false });
+      });
+
+      // Insert ball into depth sorting based on ground position
+      renderEntities.push({ type: 'ball', y: ball.y, obj: ball });
+
+      renderEntities.sort((a, b) => a.y - b.y);
+
+      renderEntities.forEach(ent => {
+        if (ent.type === 'player' || ent.type === 'mate') {
+          drawCharacter(ent.obj, ent.isMain);
+        } else if (ent.type === 'ball') {
+          drawBall();
+        }
+      });
+
+      // 4) Particles
+      particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1.0;
+
+      // 5) Floating Texts
+      floatingTexts.forEach(t => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, t.alpha);
+        ctx.font = `900 ${t.size}px Fredoka, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = t.color;
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 6;
+        ctx.fillText(t.text, t.x, t.y);
+        ctx.restore();
+      });
+
+      ctx.restore();
+    }
+
+    function mainLoop() {
+      updateGame();
+      renderGame();
+      requestAnimationFrame(mainLoop);
+    }
+
+    /* =========================================================
+       14. UI, MODALS & GAME STATE MANAGEMENT
+       ========================================================= */
+    function updateScoreUI() {
+      document.getElementById('scoreText').innerText = score.toLocaleString();
+      document.getElementById('rallyCountText').innerText = rally;
+    }
+
+    function updateLivesUI() {
+      const container = document.getElementById('livesContainer');
+      container.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        if (i < lives) {
+          container.innerHTML += '<i class="fa-solid fa-heart text-rose-500 text-sm"></i>';
+        } else {
+          container.innerHTML += '<i class="fa-regular fa-heart text-slate-500 text-sm"></i>';
+        }
+      }
+    }
+
+    function updateComboUI() {
+      const comboContainer = document.getElementById('comboContainer');
+      const comboCount = document.getElementById('comboCount');
+      if (combo > 1) {
+        comboCount.innerText = combo;
+        comboContainer.classList.remove('opacity-0');
+      } else {
+        comboContainer.classList.add('opacity-0');
+      }
+    }
+
+    function updateBounceUI() {
+      const badge = document.getElementById('bounceIndicator');
+      const text = document.getElementById('bounceText');
+      if (ball.bounces === 0) {
+        badge.className = 'glass-card px-3 py-1.5 rounded-2xl flex items-center gap-1.5 border-emerald-400/40';
+        text.className = 'text-xs font-black text-emerald-300 tracking-wide';
+        text.innerText = '0 바운드 (공중)';
+      } else if (ball.bounces === 1) {
+        badge.className = 'glass-card px-3 py-1.5 rounded-2xl flex items-center gap-1.5 border-amber-400/70 bg-amber-500/20';
+        text.className = 'text-xs font-black text-amber-300 tracking-wide';
+        text.innerText = '1 바운드 (주의!)';
+      }
+    }
+
+    function startPlaying(mode) {
+      currentMode = mode;
+      gameState = 'PLAYING';
+      score = 0;
+      rally = 0;
+      combo = 0;
+      maxCombo = 0;
+      lives = 3;
+
+      document.getElementById('mainMenuModal').classList.add('hidden');
+      document.getElementById('gameOverModal').classList.add('hidden');
+      document.getElementById('gameHud').classList.remove('opacity-0');
+
+      // Set HUD Mode Badge
+      const modeBadge = document.getElementById('hudModeBadge');
+      const roomBadge = document.getElementById('roomCodeBadge');
+
+      if (mode === 'SOLO') {
+        modeBadge.innerHTML = '<i class="fa-solid fa-person-running mr-1"></i> 혼자 연습';
+        modeBadge.className = 'px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-emerald-500/90 text-slate-950 shadow-md';
+        roomBadge.classList.add('hidden');
+      } else if (mode === 'AI') {
+        modeBadge.innerHTML = '<i class="fa-solid fa-users mr-1"></i> AI 랠리';
+        modeBadge.className = 'px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-yellow-400/90 text-slate-950 shadow-md';
+        roomBadge.classList.add('hidden');
+      } else if (mode === 'MULTI') {
+        modeBadge.innerHTML = '<i class="fa-solid fa-network-wired mr-1"></i> 코드 멀티';
+        modeBadge.className = 'px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-sky-400/90 text-slate-950 shadow-md';
+        roomBadge.classList.remove('hidden');
+      }
+
+      setupTeammates(mode);
+      updateScoreUI();
+      updateLivesUI();
+      updateComboUI();
+
+      // Launch first ball
+      ball.x = centerX;
+      ball.y = centerY;
+      passBall(centerX, centerY, 160, 0, 7.0);
+
+      sound.init();
+      sound.startBgm();
+    }
+
+    function endGame() {
+      gameState = 'GAMEOVER';
+      document.getElementById('overScoreText').innerText = score.toLocaleString();
+      document.getElementById('overRallyText').innerText = `${rally} 회`;
+      document.getElementById('overComboText').innerText = `${maxCombo}x`;
+      document.getElementById('overModeName').innerText = 
+        currentMode === 'SOLO' ? '혼자 연습 결과' : (currentMode === 'AI' ? 'AI 해변 랠리 결과' : '멀티플레이 랠리 결과');
+
+      document.getElementById('gameOverModal').classList.remove('hidden');
+      document.getElementById('gameOverModal').classList.add('flex');
+    }
+
+    function toggleGuideModal() {
+      const guideModal = document.getElementById('guideModal');
+      isPausedForGuide = !isPausedForGuide;
+      if (isPausedForGuide) {
+        guideModal.classList.remove('hidden');
+        guideModal.classList.add('flex');
+      } else {
+        guideModal.classList.add('hidden');
+        guideModal.classList.remove('flex');
+      }
+    }
+
+    /* =========================================================
+       15. EVENT LISTENERS SETUP
+       ========================================================= */
+    // Menu Mode Selection
+    document.getElementById('selectSoloModeBtn').addEventListener('click', () => startPlaying('SOLO'));
+    document.getElementById('selectAiModeBtn').addEventListener('click', () => startPlaying('AI'));
+    document.getElementById('selectMultiModeBtn').addEventListener('click', () => {
+      document.getElementById('mainMenuModal').classList.add('hidden');
+      document.getElementById('multiLobbyModal').classList.remove('hidden');
+      document.getElementById('multiLobbyModal').classList.add('flex');
+      initPeerMultiplayer(true); // Host by default
+    });
+
+    // Multiplayer Modal Controls
+    document.getElementById('closeMultiModalBtn').addEventListener('click', () => {
+      document.getElementById('multiLobbyModal').classList.add('hidden');
+      document.getElementById('multiLobbyModal').classList.remove('flex');
+      document.getElementById('mainMenuModal').classList.remove('hidden');
+    });
+
+    const tabHostBtn = document.getElementById('tabHostBtn');
+    const tabJoinBtn = document.getElementById('tabJoinBtn');
+    const hostSection = document.getElementById('hostSection');
+    const joinSection = document.getElementById('joinSection');
+
+    tabHostBtn.addEventListener('click', () => {
+      tabHostBtn.className = 'py-2 rounded-xl text-xs font-black bg-sky-500 text-slate-950 shadow';
+      tabJoinBtn.className = 'py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white';
+      hostSection.classList.remove('hidden');
+      joinSection.classList.add('hidden');
+      initPeerMultiplayer(true);
+    });
+
+    tabJoinBtn.addEventListener('click', () => {
+      tabJoinBtn.className = 'py-2 rounded-xl text-xs font-black bg-sky-500 text-slate-950 shadow';
+      tabHostBtn.className = 'py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white';
+      joinSection.classList.remove('hidden');
+      hostSection.classList.add('hidden');
+    });
+
+    document.getElementById('startHostGameBtn').addEventListener('click', () => {
+      document.getElementById('multiLobbyModal').classList.add('hidden');
+      document.getElementById('multiLobbyModal').classList.remove('flex');
+      startPlaying('MULTI');
+    });
+
+    document.getElementById('joinRoomConfirmBtn').addEventListener('click', () => {
+      const code = document.getElementById('joinRoomCodeInput').value.trim();
+      if (code.length === 4) {
+        initPeerMultiplayer(false, code);
+      } else {
+        document.getElementById('joinStatusText').innerText = '4자리 코드를 입력해주세요!';
+      }
+    });
+
+    // Sound Toggle
+    document.getElementById('soundToggleBtn').addEventListener('click', () => {
+      sound.init();
+      sound.toggle();
+    });
+
+    // Guide Modal
+    document.getElementById('guideBtn').addEventListener('click', toggleGuideModal);
+    document.getElementById('closeGuideBtn').addEventListener('click', toggleGuideModal);
+    document.getElementById('closeGuideBottomBtn').addEventListener('click', toggleGuideModal);
+
+    // Speed Selector
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const spd = parseFloat(btn.getAttribute('data-speed'));
+        speedMultiplier = spd;
+
+        document.querySelectorAll('.speed-btn').forEach(b => {
+          b.className = 'speed-btn px-2 py-1 rounded-xl text-[11px] font-bold text-slate-300 hover:text-white transition';
+        });
+        btn.className = 'speed-btn px-2 py-1 rounded-xl text-[11px] font-black bg-yellow-400 text-slate-950 transition shadow';
+
+        spawnFloatingText(`속도: ${spd}x`, centerX, centerY - 40, '#fde047', 18);
+      });
+    });
+
+    // Exit to Main Menu
+    document.getElementById('returnMenuBtn').addEventListener('click', () => {
+      gameState = 'MENU';
+      document.getElementById('gameHud').classList.add('opacity-0');
+      document.getElementById('mainMenuModal').classList.remove('hidden');
+      sound.stopBgm();
+    });
+
+    // Game Over Retries
+    document.getElementById('retryBtn').addEventListener('click', () => {
+      startPlaying(currentMode || 'AI');
+    });
+    document.getElementById('backToMenuFromOverBtn').addEventListener('click', () => {
+      document.getElementById('gameOverModal').classList.add('hidden');
+      document.getElementById('gameOverModal').classList.remove('flex');
+      document.getElementById('mainMenuModal').classList.remove('hidden');
+      gameState = 'MENU';
+      sound.stopBgm();
+    });
+
+    // Initial startup
+    window.onload = () => {
+      resizeCanvas();
+      mainLoop();
+    };
+  </script>
+</body>
+</html>
